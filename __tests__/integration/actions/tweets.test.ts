@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
 
-const { createTweet, deleteTweet, getTimeline } = await import(
+const { createTweet, deleteTweet, getTimeline, getUserTweets } = await import(
   "@/app/actions/tweets"
 );
 
@@ -184,5 +184,72 @@ describe("getTimeline", () => {
     const { data } = await getTimeline();
     expect(data[0].author.username).toBe(user.username);
     expect(data[0].author.name).toBe(user.name);
+  });
+});
+
+// ── getUserTweets ───────────────────────────────────────────────────────────────
+
+describe("getUserTweets", () => {
+  it("returns only tweets from the given user", async () => {
+    const alice = await createUser("gut1a");
+    const bob = await createUser("gut1b");
+
+    await prisma.tweet.create({ data: { content: "alice tweet", authorId: alice.id } });
+    await prisma.tweet.create({ data: { content: "bob tweet", authorId: bob.id } });
+
+    const { data } = await getUserTweets(alice.id);
+    expect(data).toHaveLength(1);
+    expect(data[0].content).toBe("alice tweet");
+    expect(data[0].author.id).toBe(alice.id);
+  });
+
+  it("returns tweets ordered newest first", async () => {
+    const user = await createUser("gut2");
+
+    await prisma.tweet.create({ data: { content: "older", authorId: user.id } });
+    await new Promise((r) => setTimeout(r, 5));
+    await prisma.tweet.create({ data: { content: "newer", authorId: user.id } });
+
+    const { data } = await getUserTweets(user.id);
+    expect(data[0].content).toBe("newer");
+    expect(data[1].content).toBe("older");
+  });
+
+  it("returns empty array when user has no tweets", async () => {
+    const user = await createUser("gut3");
+    const { data } = await getUserTweets(user.id);
+    expect(data).toHaveLength(0);
+  });
+
+  it("paginates with cursor", async () => {
+    const user = await createUser("gut4");
+
+    for (let i = 0; i < 4; i++) {
+      await prisma.tweet.create({ data: { content: `tweet ${i}`, authorId: user.id } });
+      await new Promise((r) => setTimeout(r, 2));
+    }
+
+    const first = await getUserTweets(user.id);
+    expect(first.data).toHaveLength(4);
+    expect(first.nextCursor).toBeNull();
+
+    const second = await getUserTweets(user.id, { cursor: first.data[1].id });
+    expect(second.data).toHaveLength(2);
+    expect(second.data[0].id).toBe(first.data[2].id);
+  });
+
+  it("returns nextCursor when more than PAGE_SIZE tweets exist", async () => {
+    const user = await createUser("gut5");
+
+    await prisma.tweet.createMany({
+      data: Array.from({ length: 21 }, (_, i) => ({
+        content: `tweet ${i}`,
+        authorId: user.id,
+      })),
+    });
+
+    const { data, nextCursor } = await getUserTweets(user.id);
+    expect(data).toHaveLength(20);
+    expect(nextCursor).not.toBeNull();
   });
 });

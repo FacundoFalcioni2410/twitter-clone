@@ -70,15 +70,17 @@ export default async function ProfilePage({
           <div className="border-4 border-black rounded-full">
             <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size="xl" />
           </div>
-          {isOwnProfile ? (
-            <EditProfileButton user={profile} />
-          ) : (
-            <FollowButton
-              targetUserId={profile.id}
-              initialIsFollowing={isFollowing}
-              className="mt-[52px] sm:mt-[68px]"
-            />
-          )}
+          <div data-testid="profile-actions">
+            {isOwnProfile ? (
+              <EditProfileButton user={profile} />
+            ) : (
+              <FollowButton
+                targetUserId={profile.id}
+                initialIsFollowing={isFollowing}
+                className="mt-[52px] sm:mt-[68px]"
+              />
+            )}
+          </div>
         </div>
 
         <h2 className="font-bold text-xl leading-tight">{profile.name}</h2>
