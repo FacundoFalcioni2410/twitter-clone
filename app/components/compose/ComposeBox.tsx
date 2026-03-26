@@ -1,20 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Avatar from "@/app/components/ui/Avatar";
+import { createTweet, type Tweet } from "@/app/actions/tweets";
 
 const MAX = 280;
 
 interface ComposeBoxProps {
   user: { name: string; avatarUrl?: string | null };
   autoFocus?: boolean;
+  onTweetPosted?: (tweet: Tweet) => void;
+  onClose?: () => void;
 }
 
-export default function ComposeBox({ user, autoFocus = false }: ComposeBoxProps) {
+export default function ComposeBox({
+  user,
+  autoFocus = false,
+  onTweetPosted,
+  onClose,
+}: ComposeBoxProps) {
   const [text, setText] = useState("");
+  const [isPending, startTransition] = useTransition();
   const remaining = MAX - text.length;
   const isOver = remaining < 0;
   const isEmpty = text.trim().length === 0;
+
+  const handlePost = () => {
+    if (isEmpty || isOver || isPending) return;
+    startTransition(async () => {
+      const result = await createTweet(text);
+      if (result.data) {
+        setText("");
+        onTweetPosted?.(result.data);
+        onClose?.();
+      }
+    });
+  };
 
   return (
     <div className="flex gap-3 px-4 pt-4 pb-2">
@@ -23,6 +44,9 @@ export default function ComposeBox({ user, autoFocus = false }: ComposeBoxProps)
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handlePost();
+          }}
           placeholder="What's happening?"
           autoFocus={autoFocus}
           rows={3}
@@ -44,33 +68,16 @@ export default function ComposeBox({ user, autoFocus = false }: ComposeBoxProps)
               </span>
             )}
             <button
-              disabled={isEmpty || isOver}
+              onClick={handlePost}
+              disabled={isEmpty || isOver || isPending}
               className="px-5 py-1.5 rounded-full bg-sky-500 font-bold text-white text-sm
                          hover:bg-sky-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Post
+              {isPending ? "Posting…" : "Post"}
             </button>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function MediaBtn({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className="p-2 rounded-full hover:bg-sky-500/10 transition-colors"
-    >
-      {children}
-    </button>
   );
 }
