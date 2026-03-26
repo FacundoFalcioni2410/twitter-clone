@@ -1,0 +1,19 @@
+import { cookies } from "next/headers";
+import { verifyToken, type JWTPayload } from "@/app/lib/auth";
+
+const COOKIE_NAME = "session";
+
+export async function getCurrentUser(): Promise<JWTPayload | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+  return verifyToken(token);
+}
+
+export async function requireAuth(): Promise<JWTPayload> {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error("UNAUTHORIZED");
+  }
+  return user;
+}
