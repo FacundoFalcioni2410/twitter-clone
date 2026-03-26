@@ -1,11 +1,11 @@
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
-    container_name: twitterclone_db
+    restart: unless-stopped
     environment:
+      POSTGRES_DB: twitter_clone
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: twitterclone
+      POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
@@ -17,18 +17,20 @@ services:
       retries: 5
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: twitterclone_app
+    build: .
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/twitterclone?schema=public
-      JWT_SECRET: dev-super-secret-jwt-key-min-32-characters-long!!
-      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:password@db:5432/twitter_clone?schema=public
+      JWT_SECRET: docker-dev-secret-please-change-in-production
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
 
 volumes:
