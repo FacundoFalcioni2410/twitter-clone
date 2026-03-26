@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/db";
 import { signToken } from "@/app/lib/auth";
 
@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
 
-const { createTweet, deleteTweet, getTimeline, getUserTweets } = await import(
+const { createTweet, deleteTweet, getTimeline, getUserTweets, getLikedTweets } = await import(
   "@/app/actions/tweets"
 );
 
@@ -35,11 +35,18 @@ async function mockSession(userId: string, username = "testuser") {
 
 // ── setup ──────────────────────────────────────────────────────────────────────
 
-beforeEach(async () => {
-  await prisma.tweet.deleteMany();
+async function cleanup() {
+  await prisma.tweet.deleteMany({ where: { author: { email: { contains: "@twtest.com" } } } });
   await prisma.user.deleteMany({ where: { email: { contains: "@twtest.com" } } });
+}
+
+beforeEach(async () => {
+  await cleanup();
+  mockCookieStore.get.mockReset();
   vi.clearAllMocks();
 });
+
+afterAll(cleanup);
 
 // ── createTweet ────────────────────────────────────────────────────────────────
 
@@ -129,9 +136,14 @@ describe("deleteTweet", () => {
 
 // ── getTimeline ────────────────────────────────────────────────────────────────
 
+async function createFollow(followerId: string, followingId: string) {
+  await prisma.follow.create({ data: { followerId, followingId } });
+}
+
 describe("getTimeline", () => {
-  it("returns tweets ordered newest first", async () => {
+  it("includes own tweets", async () => {
     const user = await createUser("tl1");
+    await mockSession(user.id, user.username);
 
     await prisma.tweet.create({ data: { content: "first", authorId: user.id } });
     await new Promise((r) => setTimeout(r, 5));
@@ -142,20 +154,34 @@ describe("getTimeline", () => {
     expect(data[1].content).toBe("first");
   });
 
+  it("includes tweets from followed users", async () => {
+    const alice = await createUser("tl2a");
+    const bob = await createUser("tl2b");
+    const carol = await createUser("tl2c");
+    await mockSession(alice.id, alice.username);
+    await createFollow(alice.id, bob.id);
+
+    await prisma.tweet.create({ data: { content: "bob tweet", authorId: bob.id } });
+    await prisma.tweet.create({ data: { content: "carol tweet", authorId: carol.id } });
+
+    const { data } = await getTimeline();
+    expect(data.map((t) => t.content)).toContain("bob tweet");
+    expect(data.map((t) => t.content)).not.toContain("carol tweet");
+  });
+
   it("paginates correctly with cursor", async () => {
-    const user = await createUser("tl2");
+    const user = await createUser("tl3");
+    await mockSession(user.id, user.username);
 
     for (let i = 0; i < 5; i++) {
       await prisma.tweet.create({ data: { content: `tweet ${i}`, authorId: user.id } });
       await new Promise((r) => setTimeout(r, 2));
     }
 
-    // Fetch only 3 tweets by overriding PAGE_SIZE — instead, verify cursor works
     const first = await getTimeline();
     expect(first.data.length).toBe(5);
-    expect(first.nextCursor).toBeNull(); // fewer than PAGE_SIZE (20)
+    expect(first.nextCursor).toBeNull();
 
-    // Use cursor from a mid-point
     const midId = first.data[2].id;
     const second = await getTimeline({ cursor: midId });
     expect(second.data.length).toBe(2);
@@ -163,7 +189,8 @@ describe("getTimeline", () => {
   });
 
   it("returns nextCursor when more than PAGE_SIZE tweets exist", async () => {
-    const user = await createUser("tl3");
+    const user = await createUser("tl4");
+    await mockSession(user.id, user.username);
 
     await prisma.tweet.createMany({
       data: Array.from({ length: 21 }, (_, i) => ({
@@ -178,12 +205,19 @@ describe("getTimeline", () => {
   });
 
   it("includes author data on each tweet", async () => {
-    const user = await createUser("tl4");
+    const user = await createUser("tl5");
+    await mockSession(user.id, user.username);
     await prisma.tweet.create({ data: { content: "hello", authorId: user.id } });
 
     const { data } = await getTimeline();
     expect(data[0].author.username).toBe(user.username);
     expect(data[0].author.name).toBe(user.name);
+  });
+
+  it("returns empty array when not authenticated", async () => {
+    mockCookieStore.get.mockReturnValue(undefined);
+    const { data } = await getTimeline();
+    expect(data).toHaveLength(0);
   });
 });
 
@@ -193,6 +227,7 @@ describe("getUserTweets", () => {
   it("returns only tweets from the given user", async () => {
     const alice = await createUser("gut1a");
     const bob = await createUser("gut1b");
+    await mockSession(alice.id);
 
     await prisma.tweet.create({ data: { content: "alice tweet", authorId: alice.id } });
     await prisma.tweet.create({ data: { content: "bob tweet", authorId: bob.id } });
@@ -217,6 +252,7 @@ describe("getUserTweets", () => {
 
   it("returns empty array when user has no tweets", async () => {
     const user = await createUser("gut3");
+    await mockSession(user.id);
     const { data } = await getUserTweets(user.id);
     expect(data).toHaveLength(0);
   });
@@ -251,5 +287,123 @@ describe("getUserTweets", () => {
     const { data, nextCursor } = await getUserTweets(user.id);
     expect(data).toHaveLength(20);
     expect(nextCursor).not.toBeNull();
+  });
+
+  it("isLiked is false when not authenticated", async () => {
+    const user = await createUser("gut6");
+    await prisma.tweet.create({ data: { content: "hello", authorId: user.id } });
+    mockCookieStore.get.mockReturnValue(undefined);
+
+    const { data } = await getUserTweets(user.id);
+    expect(data[0].isLiked).toBe(false);
+  });
+});
+
+// ── getLikedTweets ──────────────────────────────────────────────────────────────
+
+describe("getLikedTweets", () => {
+  it("returns tweets liked by user, newest-liked first", async () => {
+    const alice = await createUser("glt1a");
+    const bob = await createUser("glt1b");
+
+    const tweet1 = await prisma.tweet.create({ data: { content: "older", authorId: bob.id } });
+    await new Promise((r) => setTimeout(r, 5));
+    const tweet2 = await prisma.tweet.create({ data: { content: "newer", authorId: bob.id } });
+
+    await prisma.like.create({ data: { userId: alice.id, tweetId: tweet1.id } });
+    await new Promise((r) => setTimeout(r, 5));
+    await prisma.like.create({ data: { userId: alice.id, tweetId: tweet2.id } });
+
+    await mockSession(alice.id);
+    const { data } = await getLikedTweets(alice.id);
+
+    expect(data).toHaveLength(2);
+    expect(data[0].id).toBe(tweet2.id); // newest liked first
+    expect(data[1].id).toBe(tweet1.id);
+  });
+
+  it("returns empty array when user has no likes", async () => {
+    const alice = await createUser("glt2");
+    const { data } = await getLikedTweets(alice.id);
+    expect(data).toHaveLength(0);
+  });
+
+  it("isLiked true when session user has liked the tweet", async () => {
+    const alice = await createUser("glt3a");
+    const bob = await createUser("glt3b");
+    const tweet = await prisma.tweet.create({ data: { content: "hi", authorId: bob.id } });
+
+    await prisma.like.create({ data: { userId: alice.id, tweetId: tweet.id } });
+    await mockSession(alice.id);
+
+    const { data } = await getLikedTweets(alice.id);
+    expect(data[0].isLiked).toBe(true);
+  });
+
+  it("isLiked false when session user has not liked the tweet", async () => {
+    const alice = await createUser("glt4a");
+    const bob = await createUser("glt4b");
+    const carol = await createUser("glt4c");
+    const tweet = await prisma.tweet.create({ data: { content: "hi", authorId: bob.id } });
+
+    await prisma.like.create({ data: { userId: alice.id, tweetId: tweet.id } });
+    await mockSession(carol.id); // carol is viewing, but hasn't liked
+
+    const { data } = await getLikedTweets(alice.id);
+    expect(data[0].isLiked).toBe(false);
+  });
+
+  it("returns nextCursor when more than PAGE_SIZE likes exist", async () => {
+    const alice = await createUser("glt5a");
+    const bob = await createUser("glt5b");
+
+    const tweets = await Promise.all(
+      Array.from({ length: 21 }, (_, i) =>
+        prisma.tweet.create({ data: { content: `tweet ${i}`, authorId: bob.id } })
+      )
+    );
+    for (const t of tweets) {
+      await prisma.like.create({ data: { userId: alice.id, tweetId: t.id } });
+    }
+
+    await mockSession(alice.id);
+    const { data, nextCursor } = await getLikedTweets(alice.id);
+    expect(data).toHaveLength(20);
+    expect(nextCursor).not.toBeNull();
+  });
+
+  it("paginates correctly with cursor", async () => {
+    const alice = await createUser("glt6a");
+    const bob = await createUser("glt6b");
+
+    const tweets = await Promise.all(
+      Array.from({ length: 22 }, (_, i) =>
+        prisma.tweet.create({ data: { content: `tweet ${i}`, authorId: bob.id } })
+      )
+    );
+    for (const t of tweets) {
+      await prisma.like.create({ data: { userId: alice.id, tweetId: t.id } });
+      await new Promise((r) => setTimeout(r, 1));
+    }
+
+    await mockSession(alice.id);
+    const first = await getLikedTweets(alice.id);
+    expect(first.data).toHaveLength(20);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await getLikedTweets(alice.id, { cursor: first.nextCursor! });
+    expect(second.data).toHaveLength(2);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  it("isLiked is false when not authenticated", async () => {
+    const alice = await createUser("glt7a");
+    const bob = await createUser("glt7b");
+    const tweet = await prisma.tweet.create({ data: { content: "hi", authorId: bob.id } });
+    await prisma.like.create({ data: { userId: alice.id, tweetId: tweet.id } });
+    mockCookieStore.get.mockReturnValue(undefined);
+
+    const { data } = await getLikedTweets(alice.id);
+    expect(data[0].isLiked).toBe(false);
   });
 });

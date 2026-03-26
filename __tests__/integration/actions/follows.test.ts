@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/db";
 import { signToken } from "@/app/lib/auth";
 
@@ -33,11 +33,17 @@ async function mockSession(userId: string, username: string) {
 
 // ── setup ────────────────────────────────────────────────────────────────────
 
-beforeEach(async () => {
-  await prisma.follow.deleteMany();
+async function cleanup() {
+  await prisma.follow.deleteMany({ where: { follower: { email: { contains: "@followtest.com" } } } });
   await prisma.user.deleteMany({ where: { email: { contains: "@followtest.com" } } });
+}
+
+beforeEach(async () => {
+  await cleanup();
   mockCookieStore.get.mockReset();
 });
+
+afterAll(cleanup);
 
 // ── followUser ───────────────────────────────────────────────────────────────
 

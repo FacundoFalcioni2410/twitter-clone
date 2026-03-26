@@ -43,7 +43,7 @@ export default function TweetCard({ tweet, currentUserId, onDelete }: TweetCardP
             </Link>
             <span className="text-zinc-500 truncate">@{tweet.author.username}</span>
             <span className="text-zinc-500">·</span>
-            <span className="text-zinc-500 shrink-0">{formatTime(tweet.createdAt)}</span>
+            <span className="text-zinc-500 shrink-0" suppressHydrationWarning>{formatTime(tweet.createdAt)}</span>
           </div>
 
           {isOwn && (
