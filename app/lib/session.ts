@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { verifyToken, type JWTPayload } from "@/app/lib/auth";
 
 const COOKIE_NAME = "session";
@@ -13,7 +14,7 @@ export async function getCurrentUser(): Promise<JWTPayload | null> {
 export async function requireAuth(): Promise<JWTPayload> {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error("UNAUTHORIZED");
+    redirect("/login?unauthorized=true");
   }
   return user;
 }

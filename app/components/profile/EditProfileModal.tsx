@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Modal from "@/app/components/ui/Modal";
 import Avatar from "@/app/components/ui/Avatar";
+import { updateProfile } from "@/app/actions/users";
+import { useAction } from "@/app/hooks/useAction";
+import { useRouter } from "next/navigation";
 
 interface EditProfileModalProps {
   user: { name: string; bio?: string | null; avatarUrl?: string | null };
@@ -52,6 +55,16 @@ function FloatingField({
 export default function EditProfileModal({ user, onClose }: EditProfileModalProps) {
   const [name, setName] = useState(user.name);
   const [bio, setBio] = useState(user.bio ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const { execute, isPending } = useAction(updateProfile, {
+    onSuccess: () => {
+      router.refresh();
+      onClose();
+    },
+    onError: setError,
+  });
 
   return (
     <Modal onClose={onClose}>
@@ -68,10 +81,11 @@ export default function EditProfileModal({ user, onClose }: EditProfileModalProp
           <h2 className="font-bold text-xl">Edit profile</h2>
         </div>
         <button
-          onClick={onClose}
-          className="px-4 py-1.5 rounded-full bg-white text-black font-bold text-sm hover:bg-zinc-200 transition-colors"
+          onClick={() => execute({ name, bio })}
+          disabled={isPending || !name.trim()}
+          className="px-4 py-1.5 rounded-full bg-white text-black font-bold text-sm hover:bg-zinc-200 transition-colors disabled:opacity-50"
         >
-          Save
+          {isPending ? "Saving…" : "Save"}
         </button>
       </div>
 
@@ -87,6 +101,9 @@ export default function EditProfileModal({ user, onClose }: EditProfileModalProp
 
       {/* Fields */}
       <div className="px-4 pb-5 flex flex-col gap-4">
+        {error && (
+          <p className="text-red-500 text-sm text-center bg-red-500/10 rounded-lg p-3">{error}</p>
+        )}
         <FloatingField
           label="Name"
           maxLength={50}

@@ -6,7 +6,7 @@ import { login } from "@/app/actions/auth";
 import { useAction } from "@/app/hooks/useAction";
 import { ROUTES } from "@/app/lib/types";
 
-export default function LoginForm() {
+export default function LoginForm({ unauthorized }: { unauthorized?: boolean }) {
   const [error, setError] = useState<string | null>(null);
 
   const { execute, isPending } = useAction(login, {
@@ -26,6 +26,12 @@ export default function LoginForm() {
         <span className="text-3xl font-bold text-white">𝕏</span>
         <h1 className="text-2xl font-bold text-white mt-4">Sign in to X</h1>
       </div>
+
+      {unauthorized && (
+        <p className="text-amber-400 text-sm text-center bg-amber-400/10 rounded-lg p-3">
+          Please sign in to continue.
+        </p>
+      )}
 
       {error && (
         <p className="text-red-500 text-sm text-center bg-red-500/10 rounded-lg p-3">

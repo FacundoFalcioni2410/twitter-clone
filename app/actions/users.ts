@@ -1,6 +1,32 @@
 "use server";
 
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/db";
+import { requireAuth } from "@/app/lib/session";
+import type { ActionResult } from "@/app/lib/types";
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1).max(50),
+  bio: z.string().max(160).optional(),
+});
+
+export async function updateProfile(
+  input: z.infer<typeof updateProfileSchema>
+): Promise<ActionResult<null>> {
+  const session = await requireAuth();
+  const parsed = updateProfileSchema.safeParse(input);
+  if (!parsed.success) return { data: null, error: parsed.error.issues[0].message };
+
+  const user = await prisma.user.update({
+    where: { id: session.userId },
+    data: { name: parsed.data.name, bio: parsed.data.bio ?? null },
+    select: { username: true },
+  });
+
+  revalidatePath(`/${user.username}`);
+  return { data: null, error: null };
+}
 
 export async function getSuggestedUsers(currentUserId: string) {
   const alreadyFollowing = await prisma.follow.findMany({

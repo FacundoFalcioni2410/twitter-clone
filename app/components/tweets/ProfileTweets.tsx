@@ -25,6 +25,11 @@ export default function ProfileTweets({
   const loadingRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setTweets(initialTweets);
+    setNextCursor(initialNextCursor);
+  }, [initialTweets, initialNextCursor]);
+
   // Prepend tweets posted by this profile's user from anywhere on the page
   useEffect(() => {
     const handler = (e: Event) => {
