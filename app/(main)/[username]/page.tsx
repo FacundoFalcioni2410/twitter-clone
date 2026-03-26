@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/app/lib/session";
 import { getUserByUsername } from "@/app/actions/users";
-import { getUserTweets } from "@/app/actions/tweets";
+import { getUserTweets, getLikedTweets } from "@/app/actions/tweets";
 import { getIsFollowing } from "@/app/actions/follows";
 import { prisma } from "@/app/lib/db";
 import Avatar from "@/app/components/ui/Avatar";
@@ -9,7 +9,9 @@ import BackButton from "@/app/components/ui/BackButton";
 import EditProfileButton from "@/app/components/profile/EditProfileButton";
 import FollowButton from "@/app/components/profile/FollowButton";
 import ProfileFollowCounts from "@/app/components/profile/ProfileFollowCounts";
+import ProfileTabs from "@/app/components/profile/ProfileTabs";
 import ProfileTweets from "@/app/components/tweets/ProfileTweets";
+import ProfileLikes from "@/app/components/tweets/ProfileLikes";
 import { CalendarIcon } from "@/app/components/ui/icons";
 
 export async function generateMetadata({
@@ -25,10 +27,14 @@ export async function generateMetadata({
 
 export default async function ProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { username } = await params;
+  const { tab = "posts" } = await searchParams;
+  const isLikesTab = tab === "likes";
 
   const [session, profile] = await Promise.all([
     getCurrentUser(),
@@ -41,7 +47,7 @@ export default async function ProfilePage({
   const currentUserId = session?.userId ?? "";
 
   const [{ data: tweets, nextCursor }, tweetCount, isFollowing] = await Promise.all([
-    getUserTweets(profile.id),
+    isLikesTab ? getLikedTweets(profile.id) : getUserTweets(profile.id),
     prisma.tweet.count({ where: { authorId: profile.id } }),
     isOwnProfile ? Promise.resolve(false) : getIsFollowing(profile.id),
   ]);
@@ -101,19 +107,25 @@ export default async function ProfilePage({
         />
       </div>
 
-      <div className="flex mt-4 border-b border-zinc-800">
-        <div className="flex-1 flex justify-center py-4">
-          <span className="font-bold border-b-2 border-sky-500 pb-4">Posts</span>
-        </div>
-      </div>
+      <ProfileTabs username={profile.username} />
 
-      <ProfileTweets
-        initialTweets={tweets}
-        initialNextCursor={nextCursor}
-        profileUserId={profile.id}
-        currentUserId={currentUserId}
-        username={profile.username}
-      />
+      {isLikesTab ? (
+        <ProfileLikes
+          initialTweets={tweets}
+          initialNextCursor={nextCursor}
+          profileUserId={profile.id}
+          currentUserId={currentUserId}
+          username={profile.username}
+        />
+      ) : (
+        <ProfileTweets
+          initialTweets={tweets}
+          initialNextCursor={nextCursor}
+          profileUserId={profile.id}
+          currentUserId={currentUserId}
+          username={profile.username}
+        />
+      )}
     </>
   );
 }

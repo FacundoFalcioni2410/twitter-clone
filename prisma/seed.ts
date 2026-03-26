@@ -47,44 +47,27 @@ const TWEETS: string[][] = [
   ["Containers are great until you spend 2 days debugging a volume mount.", "Infrastructure as code is the only sane way to manage infra. Change my mind.", "If it's not in a pipeline, it doesn't exist."],
 ];
 
-// [followerIndex, followingIndex] — using USERS array indices
-// Designed so some users have many followers, some follow many, some mutual
-const FOLLOW_PAIRS: [number, number][] = [
-  // Everyone follows facu2410 (index 0) — he's popular
-  [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0],
-  // facu2410 follows most back
-  [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 7], [0, 8],
-  // alice & david mutual — both active in frontend/full-stack
-  [1, 4], [4, 1],
-  // emma follows carol, david, grace — testing community
-  [5, 3], [5, 4], [5, 7],
-  // grace follows alice, emma — accessibility crowd
-  [7, 1], [7, 5],
-  // henry & david mutual — backend bros
-  [8, 4], [4, 8],
-  // bob follows henry, frank (lurkers)
-  [2, 8], [2, 6],
-  // frank follows nobody except facu (handled above) — antisocial
-  // carol follows grace, alice
-  [3, 7], [3, 1],
-  // isabel follows david, henry — devops meets backend
-  [9, 4], [9, 8],
-  // henry follows isabel back
-  [8, 9],
-];
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-async function follow(ids: string[], followerIdx: number, followingIdx: number) {
-  await prisma.$transaction([
-    prisma.follow.create({ data: { followerId: ids[followerIdx], followingId: ids[followingIdx] } }),
-    prisma.user.update({ where: { id: ids[followerIdx] }, data: { followingCount: { increment: 1 } } }),
-    prisma.user.update({ where: { id: ids[followingIdx] }, data: { followersCount: { increment: 1 } } }),
-  ]);
+/** Pick `n` distinct random indices from [0, max), excluding `exclude`. */
+function pickRandom(max: number, n: number, exclude: number[] = []): number[] {
+  const pool = Array.from({ length: max }, (_, i) => i).filter(
+    (i) => !exclude.includes(i)
+  );
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, n);
 }
+
+// ── main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   console.log("🌱 Seeding database...\n");
 
   // Full clean
+  await prisma.like.deleteMany();
   await prisma.follow.deleteMany();
   await prisma.tweet.deleteMany();
   await prisma.user.deleteMany();
@@ -92,31 +75,93 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
 
-  // Create users + tweets
+  // ── Create users + tweets ──────────────────────────────────────────────────
   const ids: string[] = [];
+  const tweetsByUser: string[][] = [];
+
   for (let i = 0; i < USERS.length; i++) {
     const user = await prisma.user.create({ data: { ...USERS[i], passwordHash } });
-    await prisma.tweet.createMany({
-      data: TWEETS[i].map((content) => ({ content, authorId: user.id })),
-    });
+    const tweets = await prisma.$transaction(
+      TWEETS[i].map((content) =>
+        prisma.tweet.create({ data: { content, authorId: user.id }, select: { id: true } })
+      )
+    );
     ids.push(user.id);
+    tweetsByUser.push(tweets.map((t) => t.id));
     console.log(`  ✓ ${user.name} (@${user.username})`);
   }
 
-  // Create follows
+  // ── Follows ───────────────────────────────────────────────────────────────
+  // Each user follows 3-6 others at random; facu2410 (index 0) is boosted to be
+  // followed by more people (gives the home timeline a realistic density).
   console.log("\n  Creating follow relationships...");
-  for (const [followerIdx, followingIdx] of FOLLOW_PAIRS) {
-    await follow(ids, followerIdx, followingIdx);
+
+  const followPairs = new Set<string>(); // "followerIdx,followingIdx"
+
+  const addFollow = (f: number, t: number) => {
+    if (f === t) return;
+    followPairs.add(`${f},${t}`);
+  };
+
+  // facu2410 is "popular" — everyone else follows him
+  for (let i = 1; i < USERS.length; i++) addFollow(i, 0);
+
+  // facu2410 follows most others back
+  for (const i of pickRandom(USERS.length, 7, [0])) addFollow(0, i);
+
+  // Every user follows a random 3-5 others (self and already-covered handled)
+  for (let i = 0; i < USERS.length; i++) {
+    const count = 3 + Math.floor(Math.random() * 3); // 3–5
+    for (const j of pickRandom(USERS.length, count, [i])) addFollow(i, j);
   }
 
-  // Print summary per user
+  for (const pair of followPairs) {
+    const [fi, ti] = pair.split(",").map(Number);
+    await prisma.$transaction([
+      prisma.follow.create({ data: { followerId: ids[fi], followingId: ids[ti] } }),
+      prisma.user.update({ where: { id: ids[fi] }, data: { followingCount: { increment: 1 } } }),
+      prisma.user.update({ where: { id: ids[ti] }, data: { followersCount: { increment: 1 } } }),
+    ]);
+  }
+
+  // ── Likes ─────────────────────────────────────────────────────────────────
+  // Each tweet gets 2-5 random likes (no self-likes, no duplicates).
+  console.log("\n  Creating likes...");
+
+  const likePairs = new Set<string>(); // "userId,tweetId"
+
+  for (let authorIdx = 0; authorIdx < USERS.length; authorIdx++) {
+    for (let tweetIdx = 0; tweetIdx < tweetsByUser[authorIdx].length; tweetIdx++) {
+      const tweetId = tweetsByUser[authorIdx][tweetIdx];
+      const likeCount = 2 + Math.floor(Math.random() * 4); // 2–5
+      const likers = pickRandom(USERS.length, likeCount, [authorIdx]);
+
+      for (const likerIdx of likers) {
+        const key = `${ids[likerIdx]},${tweetId}`;
+        if (likePairs.has(key)) continue;
+        likePairs.add(key);
+
+        await prisma.$transaction([
+          prisma.like.create({ data: { userId: ids[likerIdx], tweetId } }),
+          prisma.tweet.update({ where: { id: tweetId }, data: { likeCount: { increment: 1 } } }),
+        ]);
+      }
+    }
+  }
+
+  // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n  Follow summary:");
-  const users = await prisma.user.findMany({ select: { username: true, followersCount: true, followingCount: true } });
+  const users = await prisma.user.findMany({
+    select: { username: true, followersCount: true, followingCount: true },
+  });
   for (const u of users) {
     console.log(`    @${u.username.padEnd(12)} ${u.followersCount} followers, ${u.followingCount} following`);
   }
 
-  console.log(`\n✅ Done. ${USERS.length} users · ${USERS.length * 3} tweets · ${FOLLOW_PAIRS.length} follows`);
+  const totalLikes = await prisma.like.count();
+  console.log(
+    `\n✅ Done. ${USERS.length} users · ${USERS.length * 3} tweets · ${followPairs.size} follows · ${totalLikes} likes`
+  );
   console.log(`   Password for all accounts: ${PASSWORD}`);
 }
 

@@ -24,7 +24,7 @@ export default function Modal({
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-10 px-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative z-10 w-full max-w-[600px] bg-black text-white rounded-2xl shadow-2xl border border-zinc-800">
         {children}

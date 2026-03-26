@@ -25,6 +25,7 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   tweets         Tweet[]
+  likes          Like[]
   followers      Follow[] @relation("FollowTarget")
   following      Follow[] @relation("FollowSource")
 }
@@ -45,11 +46,26 @@ model Follow {
 model Tweet {
   id        String   @id @default(cuid())
   content   String   @db.VarChar(280)
+  likeCount Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId  String
+  likes     Like[]
 
   @@index([authorId])
   @@index([createdAt(sort: Desc)])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tweet     Tweet    @relation(fields: [tweetId], references: [id], onDelete: Cascade)
+  tweetId   String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tweetId])
+  @@index([userId])
+  @@index([tweetId])
 }

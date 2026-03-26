@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import Avatar from "@/app/components/ui/Avatar";
+import LikeButton from "@/app/components/tweets/LikeButton";
 import { deleteTweet, type Tweet } from "@/app/actions/tweets";
 import { formatTime } from "@/app/lib/utils";
 
@@ -61,6 +62,14 @@ export default function TweetCard({ tweet, currentUserId, onDelete }: TweetCardP
         <p className="mt-0.5 text-[15px] whitespace-pre-wrap break-words leading-snug">
           {tweet.content}
         </p>
+
+        <div className="flex items-center mt-2">
+          <LikeButton
+            tweetId={tweet.id}
+            initialIsLiked={tweet.isLiked}
+            initialCount={tweet.likeCount}
+          />
+        </div>
       </div>
     </article>
   );
