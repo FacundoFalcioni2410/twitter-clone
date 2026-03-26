@@ -25,7 +25,7 @@ export default function NavLinks({ username }: NavLinksProps) {
           <Link
             key={href}
             href={href}
-            className={`flex items-center gap-4 rounded-full p-3 transition-colors hover:bg-white/10 w-fit ${active ? "font-bold" : ""}`}
+            className={`flex items-center justify-center xl:justify-start gap-4 rounded-full p-3 transition-colors hover:bg-white/10 w-full xl:w-fit ${active ? "font-bold" : ""}`}
           >
             <Icon solid={active} />
             <span className="hidden xl:inline text-xl pr-4">{label}</span>

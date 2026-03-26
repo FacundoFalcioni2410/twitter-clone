@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/app/lib/session";
 import { getUserByUsername } from "@/app/actions/users";
 import Avatar from "@/app/components/ui/Avatar";
 import BackButton from "@/app/components/ui/BackButton";
-import LogoutButton from "@/app/components/layout/LogoutButton";
+import EditProfileButton from "@/app/components/profile/EditProfileButton";
 import { CalendarIcon } from "@/app/components/ui/icons";
 
 export async function generateMetadata({
@@ -46,9 +46,7 @@ export default async function ProfilePage({
           <h1 className="font-bold text-xl leading-tight truncate">{profile.name}</h1>
           <p className="text-zinc-500 text-sm">0 posts</p>
         </div>
-        {isOwnProfile && (
-          <LogoutButton compact />
-        )}
+        {/* intentionally empty — logout is in the sidebar */}
       </header>
 
       {/* Banner */}
@@ -61,9 +59,7 @@ export default async function ProfilePage({
             <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size="xl" />
           </div>
           {isOwnProfile ? (
-            <button className="mt-[52px] sm:mt-[68px] px-4 py-1.5 rounded-full border border-zinc-600 font-bold text-sm hover:bg-zinc-900 transition-colors">
-              Edit profile
-            </button>
+            <EditProfileButton user={profile} />
           ) : (
             <button className="mt-[52px] sm:mt-[68px] px-4 py-1.5 rounded-full bg-white text-black font-bold text-sm hover:bg-zinc-200 transition-colors">
               Follow
