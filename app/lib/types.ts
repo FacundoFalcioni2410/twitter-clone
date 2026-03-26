@@ -6,6 +6,6 @@ export const ROUTES = {
   HOME: "/home",
   LOGIN: "/login",
   REGISTER: "/register",
-  PROFILE: (username: string) => `/profile/${username}`,
+  PROFILE: (username: string) => `/${username}`,
   SEARCH: "/search",
 } as const;
