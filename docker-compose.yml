@@ -20,9 +20,9 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/twitter_clone?schema=public
+      DATABASE_URL: postgresql://postgres:password@db:5432/twitter_clone
       JWT_SECRET: docker-dev-secret-please-change-in-production
       NEXT_PUBLIC_APP_URL: http://localhost:3000
     volumes:
