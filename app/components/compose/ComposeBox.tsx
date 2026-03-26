@@ -71,6 +71,7 @@ export default function ComposeBox({
             <button
               onClick={handlePost}
               disabled={isEmpty || isOver || isPending}
+              data-testid="compose-post-btn"
               className="px-5 py-1.5 rounded-full bg-sky-500 font-bold text-white text-sm
                          hover:bg-sky-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
