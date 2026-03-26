@@ -1,3 +1,5 @@
+"use server";
+
 import { prisma } from "@/app/lib/db";
 
 export async function getSuggestedUsers(currentUserId: string) {
@@ -13,6 +15,23 @@ export async function getSuggestedUsers(currentUserId: string) {
     select: { id: true, username: true, name: true, avatarUrl: true },
     take: 3,
     orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function searchUsers(query: string) {
+  const q = query.trim();
+  if (!q) return [];
+
+  return prisma.user.findMany({
+    where: {
+      OR: [
+        { username: { contains: q, mode: "insensitive" } },
+        { name: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, username: true, name: true, avatarUrl: true },
+    take: 5,
+    orderBy: { followersCount: "desc" },
   });
 }
 

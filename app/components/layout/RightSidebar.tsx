@@ -2,21 +2,7 @@ import Link from "next/link";
 import Avatar from "@/app/components/ui/Avatar";
 import FollowButton from "@/app/components/profile/FollowButton";
 import { getSuggestedUsers } from "@/app/actions/users";
-
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
+import RightSidebarSearch from "@/app/components/layout/RightSidebarSearch";
 
 export default async function RightSidebar({
   currentUserId,
@@ -27,16 +13,7 @@ export default async function RightSidebar({
 
   return (
     <aside className="hidden lg:flex flex-col w-[280px] xl:w-[350px] px-4 xl:px-6 pt-3 sticky top-0 h-screen overflow-y-auto">
-      {/* Search bar — links to search page (functional in Feature 4) */}
-      <Link
-        href="/search"
-        className="flex items-center gap-3 bg-zinc-900 rounded-full px-4 py-3 mb-4 hover:bg-zinc-800 transition-colors"
-      >
-        <span className="text-zinc-500">
-          <SearchIcon />
-        </span>
-        <span className="text-zinc-500 text-[15px]">Search</span>
-      </Link>
+      <RightSidebarSearch />
 
       {/* Who to follow */}
       {users.length > 0 && (
