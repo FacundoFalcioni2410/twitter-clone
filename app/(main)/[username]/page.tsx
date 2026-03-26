@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/app/lib/session";
 import { getUserByUsername } from "@/app/actions/users";
+import { getUserTweets } from "@/app/actions/tweets";
+import { prisma } from "@/app/lib/db";
 import Avatar from "@/app/components/ui/Avatar";
 import BackButton from "@/app/components/ui/BackButton";
 import EditProfileButton from "@/app/components/profile/EditProfileButton";
+import ProfileTweets from "@/app/components/tweets/ProfileTweets";
 import { CalendarIcon } from "@/app/components/ui/icons";
 
 export async function generateMetadata({
@@ -32,6 +35,13 @@ export default async function ProfilePage({
   if (!profile) notFound();
 
   const isOwnProfile = session?.username === profile.username;
+  const currentUserId = session?.userId ?? "";
+
+  const [{ data: tweets, nextCursor }, tweetCount] = await Promise.all([
+    getUserTweets(profile.id),
+    prisma.tweet.count({ where: { authorId: profile.id } }),
+  ]);
+
   const joinedDate = new Date(profile.createdAt).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -44,9 +54,10 @@ export default async function ProfilePage({
         <BackButton />
         <div className="flex-1 min-w-0">
           <h1 className="font-bold text-xl leading-tight truncate">{profile.name}</h1>
-          <p className="text-zinc-500 text-sm">0 posts</p>
+          <p className="text-zinc-500 text-sm">
+            {tweetCount} {tweetCount === 1 ? "post" : "posts"}
+          </p>
         </div>
-        {/* intentionally empty — logout is in the sidebar */}
       </header>
 
       {/* Banner */}
@@ -97,15 +108,13 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      {/* Empty state */}
-      <div className="px-8 py-16 text-center">
-        <h3 className="font-extrabold text-3xl mb-2">
-          {isOwnProfile ? "You haven't posted yet" : `@${profile.username} hasn't posted yet`}
-        </h3>
-        <p className="text-zinc-500">
-          When they post, their posts will show up here.
-        </p>
-      </div>
+      <ProfileTweets
+        initialTweets={tweets}
+        initialNextCursor={nextCursor}
+        profileUserId={profile.id}
+        currentUserId={currentUserId}
+        username={profile.username}
+      />
     </>
   );
 }

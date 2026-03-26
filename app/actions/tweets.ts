@@ -68,6 +68,27 @@ export async function deleteTweet(tweetId: string) {
   return { data: true, error: null };
 }
 
+export async function getUserTweets(userId: string, opts?: { cursor?: string }) {
+  const tweets = await prisma.tweet.findMany({
+    where: { authorId: userId },
+    ...(opts?.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    take: PAGE_SIZE + 1,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    include: {
+      author: { select: authorSelect },
+    },
+  });
+
+  const hasMore = tweets.length > PAGE_SIZE;
+  const data = (hasMore ? tweets.slice(0, PAGE_SIZE) : tweets).map((t) => ({
+    ...t,
+    createdAt: t.createdAt.toISOString(),
+  })) as Tweet[];
+
+  const nextCursor = hasMore ? data[data.length - 1].id : null;
+  return { data, nextCursor };
+}
+
 export async function getTimeline(opts?: { cursor?: string }) {
   const tweets = await prisma.tweet.findMany({
     ...(opts?.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),

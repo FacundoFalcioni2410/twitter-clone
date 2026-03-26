@@ -31,6 +31,7 @@ export default function ComposeBox({
       const result = await createTweet(text);
       if (result.data) {
         setText("");
+        window.dispatchEvent(new CustomEvent("tweet-posted", { detail: result.data }));
         onTweetPosted?.(result.data);
         onClose?.();
       }

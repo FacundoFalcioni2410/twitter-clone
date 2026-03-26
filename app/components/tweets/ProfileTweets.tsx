@@ -1,41 +1,42 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import ComposeBox from "@/app/components/compose/ComposeBox";
 import TweetCard from "@/app/components/tweets/TweetCard";
-import { getTimeline, type Tweet } from "@/app/actions/tweets";
+import { getUserTweets, type Tweet } from "@/app/actions/tweets";
 
-interface TimelineProps {
+interface ProfileTweetsProps {
   initialTweets: Tweet[];
   initialNextCursor: string | null;
+  profileUserId: string;
   currentUserId: string;
-  user: { name: string; avatarUrl?: string | null };
+  username: string;
 }
 
-export default function Timeline({
+export default function ProfileTweets({
   initialTweets,
   initialNextCursor,
+  profileUserId,
   currentUserId,
-  user,
-}: TimelineProps) {
+  username,
+}: ProfileTweetsProps) {
   const [tweets, setTweets] = useState<Tweet[]>(initialTweets);
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const handleTweetPosted = (tweet: Tweet) => {
-    setTweets((prev) =>
-      prev.some((t) => t.id === tweet.id) ? prev : [tweet, ...prev]
-    );
-  };
-
+  // Prepend tweets posted by this profile's user from anywhere on the page
   useEffect(() => {
-    const handler = (e: Event) => handleTweetPosted((e as CustomEvent<Tweet>).detail);
+    const handler = (e: Event) => {
+      const tweet = (e as CustomEvent<Tweet>).detail;
+      if (tweet.author.id !== profileUserId) return;
+      setTweets((prev) =>
+        prev.some((t) => t.id === tweet.id) ? prev : [tweet, ...prev]
+      );
+    };
     window.addEventListener("tweet-posted", handler);
     return () => window.removeEventListener("tweet-posted", handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [profileUserId]);
 
   const handleDelete = (id: string) => {
     setTweets((prev) => prev.filter((t) => t.id !== id));
@@ -46,13 +47,13 @@ export default function Timeline({
     loadingRef.current = true;
     setLoading(true);
 
-    const result = await getTimeline({ cursor: nextCursor });
+    const result = await getUserTweets(profileUserId, { cursor: nextCursor });
     setTweets((prev) => [...prev, ...result.data]);
     setNextCursor(result.nextCursor);
 
     loadingRef.current = false;
     setLoading(false);
-  }, [nextCursor]);
+  }, [nextCursor, profileUserId]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -65,19 +66,21 @@ export default function Timeline({
     return () => observer.disconnect();
   }, [loadMore, nextCursor]);
 
+  if (tweets.length === 0 && !loading) {
+    return (
+      <div className="px-8 py-16 text-center">
+        <h3 className="font-extrabold text-3xl mb-2">
+          {currentUserId === profileUserId
+            ? "You haven't posted yet"
+            : `@${username} hasn't posted yet`}
+        </h3>
+        <p className="text-zinc-500">When they post, their posts will show up here.</p>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="border-b border-zinc-800">
-        <ComposeBox user={user} />
-      </div>
-
-      {tweets.length === 0 && !loading && (
-        <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
-          <p className="font-extrabold text-3xl mb-2">Nothing here yet</p>
-          <p className="text-zinc-500">Be the first to post something!</p>
-        </div>
-      )}
-
       {tweets.map((tweet) => (
         <TweetCard
           key={tweet.id}
@@ -96,7 +99,7 @@ export default function Timeline({
       )}
 
       {!nextCursor && tweets.length > 0 && (
-        <p className="text-center text-zinc-600 text-sm py-8">You&apos;re all caught up</p>
+        <p className="text-center text-zinc-600 text-sm py-8">No more posts</p>
       )}
     </>
   );

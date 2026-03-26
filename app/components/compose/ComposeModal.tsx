@@ -28,7 +28,7 @@ export default function ComposeModal({ user, onClose }: ComposeModalProps) {
           <CloseIcon />
         </button>
       </div>
-      <ComposeBox user={user} autoFocus />
+      <ComposeBox user={user} autoFocus onClose={onClose} />
     </Modal>
   );
 }
