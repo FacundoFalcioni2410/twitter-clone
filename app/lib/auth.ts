@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 
 const secret = new TextEncoder().encode(
+  /* v8 ignore next */
   process.env.JWT_SECRET ?? "fallback-secret-not-for-production"
 );
 

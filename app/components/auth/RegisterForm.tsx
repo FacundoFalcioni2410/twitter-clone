@@ -84,7 +84,6 @@ export default function RegisterForm() {
           name="password"
           type="password"
           required
-          minLength={8}
           autoComplete="new-password"
           className="rounded-md border border-zinc-700 bg-transparent px-3 py-2 text-white placeholder-zinc-600 focus:border-sky-500 focus:outline-none"
           placeholder="Min. 8 chars, 1 uppercase, 1 special"

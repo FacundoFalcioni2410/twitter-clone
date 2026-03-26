@@ -19,6 +19,7 @@ export default defineConfig({
         "**/__tests__/**",
         "**/*.config.*",
         "prisma/**",
+        "app/lib/types.ts",  // constants only, no logic to test
       ],
       thresholds: {
         lines: 80,
