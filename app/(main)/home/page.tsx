@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireAuth } from "@/app/lib/session";
 import { prisma } from "@/app/lib/db";
 import { getTimeline } from "@/app/actions/tweets";
@@ -9,12 +10,14 @@ export default async function HomePage() {
   const session = await requireAuth();
 
   const [user, { data: tweets, nextCursor }] = await Promise.all([
-    prisma.user.findUniqueOrThrow({
+    prisma.user.findUnique({
       where: { id: session.userId },
       select: { name: true, avatarUrl: true },
     }),
     getTimeline(),
   ]);
+
+  if (!user) redirect("/api/auth/signout");
 
   return (
     <>

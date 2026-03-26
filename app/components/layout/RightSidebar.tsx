@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Avatar from "@/app/components/ui/Avatar";
+import FollowButton from "@/app/components/profile/FollowButton";
 import { getSuggestedUsers } from "@/app/actions/users";
 
 function SearchIcon() {
@@ -66,12 +67,7 @@ export default async function RightSidebar({
                   </p>
                 </div>
               </Link>
-              <button
-                type="button"
-                className="px-4 py-1.5 rounded-full bg-white text-black font-bold text-sm hover:bg-zinc-200 transition-colors flex-shrink-0"
-              >
-                Follow
-              </button>
+              <FollowButton targetUserId={user.id} initialIsFollowing={false} />
             </div>
           ))}
         </div>

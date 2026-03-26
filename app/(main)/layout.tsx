@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireAuth } from "@/app/lib/session";
 import { prisma } from "@/app/lib/db";
 import Sidebar from "@/app/components/layout/Sidebar";
@@ -10,10 +11,14 @@ export default async function MainLayout({
   children: React.ReactNode;
 }) {
   const session = await requireAuth();
-  const user = await prisma.user.findUniqueOrThrow({
+  const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { username: true, name: true, avatarUrl: true },
   });
+
+  if (!user) {
+    redirect("/api/auth/signout");
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">

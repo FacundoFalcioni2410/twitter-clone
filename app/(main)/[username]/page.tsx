@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/app/lib/session";
 import { getUserByUsername } from "@/app/actions/users";
 import { getUserTweets } from "@/app/actions/tweets";
+import { getIsFollowing } from "@/app/actions/follows";
 import { prisma } from "@/app/lib/db";
 import Avatar from "@/app/components/ui/Avatar";
 import BackButton from "@/app/components/ui/BackButton";
 import EditProfileButton from "@/app/components/profile/EditProfileButton";
+import FollowButton from "@/app/components/profile/FollowButton";
+import ProfileFollowCounts from "@/app/components/profile/ProfileFollowCounts";
 import ProfileTweets from "@/app/components/tweets/ProfileTweets";
 import { CalendarIcon } from "@/app/components/ui/icons";
 
@@ -37,9 +40,10 @@ export default async function ProfilePage({
   const isOwnProfile = session?.username === profile.username;
   const currentUserId = session?.userId ?? "";
 
-  const [{ data: tweets, nextCursor }, tweetCount] = await Promise.all([
+  const [{ data: tweets, nextCursor }, tweetCount, isFollowing] = await Promise.all([
     getUserTweets(profile.id),
     prisma.tweet.count({ where: { authorId: profile.id } }),
+    isOwnProfile ? Promise.resolve(false) : getIsFollowing(profile.id),
   ]);
 
   const joinedDate = new Date(profile.createdAt).toLocaleDateString("en-US", {
@@ -49,7 +53,6 @@ export default async function ProfilePage({
 
   return (
     <>
-      {/* Sticky header */}
       <header className="sticky top-0 z-10 bg-black/80 backdrop-blur-sm px-4 py-3 border-b border-zinc-800 flex items-center gap-4">
         <BackButton />
         <div className="flex-1 min-w-0">
@@ -60,10 +63,8 @@ export default async function ProfilePage({
         </div>
       </header>
 
-      {/* Banner */}
       <div className="h-[130px] sm:h-[200px] bg-zinc-800" />
 
-      {/* Avatar row */}
       <div className="px-4">
         <div className="flex items-end justify-between -mt-[46px] sm:-mt-[60px] mb-3">
           <div className="border-4 border-black rounded-full">
@@ -72,13 +73,14 @@ export default async function ProfilePage({
           {isOwnProfile ? (
             <EditProfileButton user={profile} />
           ) : (
-            <button className="mt-[52px] sm:mt-[68px] px-4 py-1.5 rounded-full bg-white text-black font-bold text-sm hover:bg-zinc-200 transition-colors">
-              Follow
-            </button>
+            <FollowButton
+              targetUserId={profile.id}
+              initialIsFollowing={isFollowing}
+              className="mt-[52px] sm:mt-[68px]"
+            />
           )}
         </div>
 
-        {/* Profile info */}
         <h2 className="font-bold text-xl leading-tight">{profile.name}</h2>
         <p className="text-zinc-500">@{profile.username}</p>
 
@@ -89,19 +91,14 @@ export default async function ProfilePage({
           <span>Joined {joinedDate}</span>
         </div>
 
-        <div className="flex gap-5 mt-3 text-sm">
-          <span>
-            <strong className="text-white">0</strong>{" "}
-            <span className="text-zinc-500">Following</span>
-          </span>
-          <span>
-            <strong className="text-white">0</strong>{" "}
-            <span className="text-zinc-500">Followers</span>
-          </span>
-        </div>
+        <ProfileFollowCounts
+          username={profile.username}
+          profileUserId={profile.id}
+          initialFollowingCount={profile.followingCount}
+          initialFollowersCount={profile.followersCount}
+        />
       </div>
 
-      {/* Posts tab */}
       <div className="flex mt-4 border-b border-zinc-800">
         <div className="flex-1 flex justify-center py-4">
           <span className="font-bold border-b-2 border-sky-500 pb-4">Posts</span>
