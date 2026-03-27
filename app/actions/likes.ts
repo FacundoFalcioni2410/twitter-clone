@@ -3,6 +3,7 @@
 import { prisma } from "@/app/lib/db";
 import { requireAuth } from "@/app/lib/session";
 import { broadcastLike } from "@/app/lib/sse";
+import { createNotification } from "@/app/actions/notifications";
 
 export async function getTweetLikes(tweetId: string) {
   const likes = await prisma.like.findMany({
@@ -24,10 +25,11 @@ export async function likeTweet(tweetId: string) {
 
   const [, updated] = await prisma.$transaction([
     prisma.like.create({ data: { userId: session.userId, tweetId } }),
-    prisma.tweet.update({ where: { id: tweetId }, data: { likeCount: { increment: 1 } }, select: { likeCount: true } }),
+    prisma.tweet.update({ where: { id: tweetId }, data: { likeCount: { increment: 1 } }, select: { likeCount: true, authorId: true, content: true } }),
   ]);
 
   broadcastLike(tweetId, updated.likeCount);
+  void createNotification({ type: "LIKE", recipientId: updated.authorId, actorId: session.userId, tweetId, tweetContent: updated.content });
   return { data: true, error: null };
 }
 

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/app/lib/db";
 import { requireAuth, getCurrentUser } from "@/app/lib/session";
+import { createNotification } from "@/app/actions/notifications";
 
 const userSelect = {
   id: true,
@@ -40,6 +41,7 @@ export async function followUser(targetUserId: string) {
     }),
   ]);
 
+  void createNotification({ type: "FOLLOW", recipientId: targetUserId, actorId: session.userId });
   return { data: true, error: null };
 }
 

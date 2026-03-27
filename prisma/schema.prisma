@@ -12,23 +12,31 @@ datasource db {
   provider = "postgresql"
 }
 
+enum NotificationType {
+  LIKE
+  FOLLOW
+  REPLY
+}
+
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique @db.VarChar(254)
-  username       String   @unique @db.VarChar(20)
-  name           String   @db.VarChar(50)
-  bio            String?  @db.VarChar(160)
-  avatarUrl      String?  @db.VarChar(500)
-  headerUrl      String?  @db.VarChar(500)
-  passwordHash   String   @db.VarChar(60)
-  followersCount Int      @default(0)
-  followingCount Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  tweets         Tweet[]
-  likes          Like[]
-  followers      Follow[] @relation("FollowTarget")
-  following      Follow[] @relation("FollowSource")
+  id                    String         @id @default(cuid())
+  email                 String         @unique @db.VarChar(254)
+  username              String         @unique @db.VarChar(20)
+  name                  String         @db.VarChar(50)
+  bio                   String?        @db.VarChar(160)
+  avatarUrl             String?        @db.VarChar(500)
+  headerUrl             String?        @db.VarChar(500)
+  passwordHash          String         @db.VarChar(60)
+  followersCount        Int            @default(0)
+  followingCount        Int            @default(0)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  tweets                Tweet[]
+  likes                 Like[]
+  followers             Follow[]       @relation("FollowTarget")
+  following             Follow[]       @relation("FollowSource")
+  notificationsReceived Notification[] @relation("NotifRecipient")
+  notificationsSent     Notification[] @relation("NotifActor")
 }
 
 model Follow {
@@ -57,6 +65,7 @@ model Tweet {
   author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId      String
   likes         Like[]
+  notifications Notification[]
   parent        Tweet?    @relation("TweetReplies", fields: [parentId], references: [id], onDelete: SetNull)
   replies       Tweet[]   @relation("TweetReplies")
 
@@ -76,4 +85,20 @@ model Like {
   @@unique([userId, tweetId])
   @@index([userId])
   @@index([tweetId])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  recipientId String
+  recipient   User             @relation("NotifRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User             @relation("NotifActor", fields: [actorId], references: [id], onDelete: Cascade)
+  tweetId     String?
+  tweet       Tweet?           @relation(fields: [tweetId], references: [id], onDelete: SetNull)
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, read])
 }

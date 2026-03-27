@@ -3,7 +3,7 @@ import { prisma } from "@/app/lib/db";
 import { signToken } from "@/app/lib/auth";
 
 const mockBroadcastLike = vi.fn();
-vi.mock("@/app/lib/sse", () => ({ broadcastLike: mockBroadcastLike }));
+vi.mock("@/app/lib/sse", () => ({ broadcastLike: mockBroadcastLike, broadcastNotification: vi.fn() }));
 
 const mockCookieStore = { set: vi.fn(), delete: vi.fn(), get: vi.fn() };
 vi.mock("next/headers", () => ({

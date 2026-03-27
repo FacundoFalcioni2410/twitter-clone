@@ -114,6 +114,56 @@ describe("broadcastReplyCount", () => {
   });
 });
 
+describe("broadcastNotification", () => {
+  function makeNotif() {
+    return {
+      id: "n1",
+      type: "LIKE" as const,
+      actor: { id: "a1", username: "actor", name: "Actor", avatarUrl: null },
+      tweetId: "t1",
+      tweetContent: "hello",
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  it("is a no-op when no clients are connected", async () => {
+    const { broadcastNotification } = await importSSE();
+    expect(() => broadcastNotification("u1", makeNotif())).not.toThrow();
+  });
+
+  it("sends only to the matching recipient", async () => {
+    const { addSSEClient, broadcastNotification } = await importSSE();
+    const recipient = vi.fn();
+    const other = vi.fn();
+    addSSEClient({ userId: "recipient1", enqueue: recipient });
+    addSSEClient({ userId: "other1", enqueue: other });
+
+    broadcastNotification("recipient1", makeNotif());
+
+    expect(recipient).toHaveBeenCalledOnce();
+    expect(other).not.toHaveBeenCalled();
+    expect(recipient.mock.calls[0][0]).toContain("event: notification");
+    expect(recipient.mock.calls[0][0]).toContain('"id":"n1"');
+  });
+
+  it("removes a dead client that throws during broadcastNotification", async () => {
+    const { addSSEClient, broadcastNotification } = await importSSE();
+    const bad = vi.fn().mockImplementation(() => { throw new Error("closed"); });
+    const good = vi.fn();
+    addSSEClient({ userId: "u1", enqueue: bad });
+    addSSEClient({ userId: "u1", enqueue: good });
+
+    broadcastNotification("u1", makeNotif());
+    expect(bad).toHaveBeenCalledOnce();
+    expect(good).toHaveBeenCalledOnce();
+
+    broadcastNotification("u1", makeNotif());
+    expect(bad).toHaveBeenCalledOnce(); // removed after first throw
+    expect(good).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("broadcastTweet", () => {
   it("is a no-op when no clients are connected", async () => {
     const { broadcastTweet } = await importSSE();

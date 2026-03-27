@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Avatar from "@/app/components/ui/Avatar";
-import { XLogo, HomeIcon, SearchIcon, ProfileIcon } from "@/app/components/ui/icons";
+import { XLogo, HomeIcon, SearchIcon, ProfileIcon, BellIcon } from "@/app/components/ui/icons";
 import LogoutButton from "@/app/components/layout/LogoutButton";
 
 interface MobileNavUser {
@@ -20,6 +20,7 @@ export default function MobileNav({ user }: { user: MobileNavUser }) {
   const links = [
     { href: "/home", label: "Home", Icon: HomeIcon },
     { href: "/search", label: "Search", Icon: SearchIcon },
+    { href: "/notifications", label: "Notifications", Icon: BellIcon },
     { href: `/${user.username}`, label: "Profile", Icon: ProfileIcon },
   ];
 
