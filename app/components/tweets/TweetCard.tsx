@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Avatar from "@/app/components/ui/Avatar";
 import LikeButton from "@/app/components/tweets/LikeButton";
@@ -41,6 +42,7 @@ function UnavailablePlaceholder({ tweet, hasConnector }: { tweet: Tweet; hasConn
 }
 
 export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector }: TweetCardProps) {
+  const router = useRouter();
   const isOwn = tweet.author.id === currentUserId;
   const [isPending, startTransition] = useTransition();
   const [deletedLocally, setDeletedLocally] = useState(false);
@@ -53,7 +55,8 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
   const isEmpty = replyText.trim().length === 0;
   const isOver = remaining < 0;
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     startTransition(async () => {
       const result = await deleteTweet(tweet.id);
       if (!result.error) {
@@ -84,17 +87,11 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
 
   return (
     <article
-      className={`relative flex gap-3 px-4 py-3 border-b border-zinc-800 hover:bg-white/[0.03] transition-colors${isPending ? " opacity-50 pointer-events-none" : ""}`}
+      onClick={() => router.push(`/${tweet.author.username}/status/${tweet.id}`)}
+      className={`flex gap-3 px-4 py-3 border-b border-zinc-800 hover:bg-white/[0.03] transition-colors cursor-pointer${isPending ? " opacity-50 pointer-events-none" : ""}`}
     >
-      {/* Stretched link — covers the full card, sits behind all content */}
-      <Link
-        href={`/${tweet.author.username}/status/${tweet.id}`}
-        className="absolute inset-0"
-        aria-label={`View tweet by ${tweet.author.name}`}
-      />
-
-      <div className="relative z-10 shrink-0 mt-0.5">
-        <Link href={`/${tweet.author.username}`}>
+      <div className="relative shrink-0 mt-0.5">
+        <Link href={`/${tweet.author.username}`} onClick={(e) => e.stopPropagation()}>
           <Avatar name={tweet.author.name} avatarUrl={tweet.author.avatarUrl} size="md" />
         </Link>
         {hasConnector && (
@@ -102,18 +99,19 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
         )}
       </div>
 
-      <div className="relative z-10 flex-1 min-w-0">
+      <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1">
           <div className="flex flex-wrap items-center gap-x-1 min-w-0 text-[15px]">
             <Link
               href={`/${tweet.author.username}`}
+              onClick={(e) => e.stopPropagation()}
               className="font-bold hover:underline truncate max-w-[120px] sm:max-w-none"
             >
               {tweet.author.name}
             </Link>
-            <span className="text-zinc-500 truncate pointer-events-none">@{tweet.author.username}</span>
-            <span className="text-zinc-500 pointer-events-none">·</span>
-            <span className="text-zinc-500 shrink-0 pointer-events-none" suppressHydrationWarning>{formatTime(tweet.createdAt)}</span>
+            <span className="text-zinc-500 truncate">@{tweet.author.username}</span>
+            <span className="text-zinc-500">·</span>
+            <span className="text-zinc-500 shrink-0" suppressHydrationWarning>{formatTime(tweet.createdAt)}</span>
           </div>
 
           {isOwn && (
@@ -129,13 +127,13 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
           )}
         </div>
 
-        <p className="mt-0.5 text-[15px] whitespace-pre-wrap break-words leading-snug pointer-events-none">
+        <p className="mt-0.5 text-[15px] whitespace-pre-wrap break-words leading-snug">
           {tweet.content}
         </p>
 
         <div className="flex items-center gap-2 mt-2">
           <button
-            onClick={() => setIsReplying((v) => !v)}
+            onClick={(e) => { e.stopPropagation(); setIsReplying((v) => !v); }}
             aria-label="Reply"
             className={`flex items-center gap-1 p-1.5 rounded-full transition-colors ${
               isReplying
@@ -156,7 +154,7 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
         </div>
 
         {isReplying && (
-          <div className="mt-3 pt-3 border-t border-zinc-800">
+          <div className="mt-3 pt-3 border-t border-zinc-800" onClick={(e) => e.stopPropagation()}>
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}

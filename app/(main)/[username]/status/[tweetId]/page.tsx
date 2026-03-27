@@ -20,7 +20,7 @@ export default async function TweetThreadPage({
     getReplyChains(tweetId, { limit: 3 }),
   ]);
 
-  if (!tweet || tweet.deleted) notFound();
+  if (!tweet) notFound();
 
   const currentUserId = session?.userId ?? "";
 

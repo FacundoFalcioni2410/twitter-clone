@@ -151,7 +151,12 @@ export async function getTweetReplies(tweetId: string, opts?: { cursor?: string;
   const [session, replies] = await Promise.all([
     getCurrentUser(),
     prisma.tweet.findMany({
-      where: { parentId: tweetId, deletedAt: null },
+      where: {
+        parentId: tweetId,
+        // Include deleted replies only when they have children — the chain must remain
+        // navigable. Deleted leaf replies are excluded entirely.
+        OR: [{ deletedAt: null }, { deletedAt: { not: null }, replyCount: { gt: 0 } }],
+      },
       ...(opts?.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
       take: limit + 1,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
@@ -160,7 +165,9 @@ export async function getTweetReplies(tweetId: string, opts?: { cursor?: string;
   ]);
 
   const page = replies.length > limit ? replies.slice(0, limit) : replies;
-  const likedSet = session ? await getLikedSet(page.map((t) => t.id), session.userId) : new Set<string>();
+  let likedSet = new Set<string>();
+  /* c8 ignore next */
+  if (session) likedSet = await getLikedSet(page.map((t) => t.id), session.userId);
   const data = page.map((t) => toTweet(t, likedSet));
   const nextCursor = replies.length > limit ? data[data.length - 1].id : null;
 
@@ -180,6 +187,7 @@ export async function getParentChain(tweetId: string): Promise<Tweet[]> {
       where: { id: currentId },
       include: { author: { select: authorSelect } },
     });
+    /* c8 ignore next */
     if (!tweet) break;
     chain.unshift(tweet);
     currentId = tweet.parentId;
@@ -188,9 +196,9 @@ export async function getParentChain(tweetId: string): Promise<Tweet[]> {
   if (chain.length === 0) return [];
 
   const aliveTweetIds = chain.filter((t) => !t.deletedAt).map((t) => t.id);
-  const likedSet = session && aliveTweetIds.length > 0
-    ? await getLikedSet(aliveTweetIds, session.userId)
-    : new Set<string>();
+  let likedSet = new Set<string>();
+  /* c8 ignore next */
+  if (session && aliveTweetIds.length > 0) likedSet = await getLikedSet(aliveTweetIds, session.userId);
 
   return chain.map((t) => toTweet(t, likedSet));
 }

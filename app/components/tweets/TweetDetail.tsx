@@ -46,6 +46,27 @@ export default function TweetDetail({ tweet, currentUserId }: TweetDetailProps) 
     });
   };
 
+  if (tweet.deleted) {
+    return (
+      <article className="px-4 pt-4 pb-3 border-b border-zinc-800">
+        <div className="flex items-center gap-3 mb-3">
+          <Link href={`/${tweet.author.username}`}>
+            <Avatar name={tweet.author.name} avatarUrl={tweet.author.avatarUrl} size="md" />
+          </Link>
+          <div>
+            <Link href={`/${tweet.author.username}`} className="font-bold hover:underline block leading-tight">
+              {tweet.author.name}
+            </Link>
+            <p className="text-zinc-500 text-sm">@{tweet.author.username}</p>
+          </div>
+        </div>
+        <div className="border border-zinc-700 rounded-xl px-4 py-5 mb-4">
+          <p className="text-zinc-500 text-[15px]">This post is unavailable.</p>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <article className="px-4 pt-4 pb-3 border-b border-zinc-800">
       <div className="flex items-center gap-3 mb-3">

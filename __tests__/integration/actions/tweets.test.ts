@@ -585,18 +585,33 @@ describe("getTweetReplies", () => {
     expect(data[1].content).toBe("second reply");
   });
 
-  it("excludes deleted replies", async () => {
+  it("excludes deleted leaf replies (no children)", async () => {
     const user = await createUser("gtr2");
     const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
 
     await prisma.tweet.create({ data: { content: "alive", authorId: user.id, parentId: parent.id } });
+    // deleted with no children → should be excluded
     await prisma.tweet.create({
-      data: { content: "deleted", authorId: user.id, parentId: parent.id, deletedAt: new Date() },
+      data: { content: "deleted leaf", authorId: user.id, parentId: parent.id, deletedAt: new Date() },
     });
 
     const { data } = await getTweetReplies(parent.id);
     expect(data).toHaveLength(1);
     expect(data[0].content).toBe("alive");
+  });
+
+  it("includes deleted replies that have children", async () => {
+    const user = await createUser("gtr6");
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+
+    const deleted = await prisma.tweet.create({
+      data: { content: "deleted with child", authorId: user.id, parentId: parent.id, deletedAt: new Date(), replyCount: 1 },
+    });
+    await prisma.tweet.create({ data: { content: "grandchild", authorId: user.id, parentId: deleted.id } });
+
+    const { data } = await getTweetReplies(parent.id);
+    expect(data).toHaveLength(1);
+    expect(data[0].deleted).toBe(true);
   });
 
   it("returns nextCursor when more replies exist than the limit", async () => {
