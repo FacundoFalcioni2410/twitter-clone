@@ -43,35 +43,13 @@ docker compose exec app npm run db:seed:force
 
 App available at http://localhost:3000
 
-### Prerequisites (local development only)
+## Development (without Docker)
 
-| Tool    | Version |
-| ------- | ------- |
-| Node.js | 20.x    |
-
-## Local Development
-
-#### 1. Install dependencies
+> Requires Node.js 20.x and Docker (for the database only).
 
 ```bash
 npm install
-```
-
-#### 2. Configure environment
-
-```bash
 cp .env.example .env
-```
-
-```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/twitter_clone"
-JWT_SECRET="your-super-secret-key-min-32-characters-long!!"
-NODE_ENV="development"
-```
-
-#### 3. Start database, migrate, seed and run
-
-```bash
 docker compose up db -d
 npm run db:migrate
 npm run db:seed
@@ -98,32 +76,35 @@ See `prisma/seed.ts` for the full list.
 
 ## Running Tests
 
-> **The database must be running before executing any tests.** Start just the DB with:
-> ```bash
-> docker compose up db -d
-> ```
-> Or run the full stack if you already have it up.
+> Requires local Node.js setup (see Development section above).
 
 ### Unit and integration
 
 ```bash
-npm test
+docker compose up db -d
+npm install
+npm run db:generate
+npm run db:deploy
+npm run db:seed
+npm run test
 npm run test:coverage
 npm run test:watch
 ```
 
 ### E2E (Playwright)
 
-Playwright browsers must be installed once before running E2E tests:
-
+Install browsers once:
 ```bash
 npx playwright install
 ```
 
-E2E tests spin up their own Next.js server, so the app must **not** be running, only the database should be up:
-
+The app must **not** be running — Playwright starts its own server:
 ```bash
 docker compose up db -d
+npm install
+npm run db:generate
+npm run db:deploy
+npm run db:seed
 npm run test:e2e
 npm run test:e2e:watch
 ```
