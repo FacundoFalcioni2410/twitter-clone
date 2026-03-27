@@ -46,11 +46,18 @@ export default async function ProfilePage({
   const isOwnProfile = session?.username === profile.username;
   const currentUserId = session?.userId ?? "";
 
-  const [{ data: tweets, nextCursor }, tweetCount, isFollowing] = await Promise.all([
+  const [{ data: tweets, nextCursor }, tweetCount, isFollowing, followerRecord] = await Promise.all([
     isLikesTab ? getLikedTweets(profile.id) : getUserTweets(profile.id),
     prisma.tweet.count({ where: { authorId: profile.id } }),
     isOwnProfile ? Promise.resolve(false) : getIsFollowing(profile.id),
+    (!isOwnProfile && session)
+      ? prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: profile.id, followingId: session.userId } },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
   ]);
+  const isFollowingViewer = !!followerRecord;
 
   const joinedDate = new Date(profile.createdAt).toLocaleDateString("en-US", {
     month: "long",
@@ -90,7 +97,14 @@ export default async function ProfilePage({
         </div>
 
         <h2 className="font-bold text-xl leading-tight">{profile.name}</h2>
-        <p className="text-zinc-500">@{profile.username}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-zinc-500">@{profile.username}</p>
+          {isFollowingViewer && (
+            <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">
+              Follows you
+            </span>
+          )}
+        </div>
 
         {profile.bio && <p className="mt-3 text-[15px]">{profile.bio}</p>}
 

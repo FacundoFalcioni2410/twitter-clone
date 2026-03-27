@@ -37,6 +37,17 @@ export default function Timeline({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { parentId } = (e as CustomEvent<{ reply: Tweet; parentId: string }>).detail;
+      setTweets((prev) =>
+        prev.map((t) => (t.id === parentId ? { ...t, replyCount: t.replyCount + 1 } : t))
+      );
+    };
+    window.addEventListener("reply-posted", handler);
+    return () => window.removeEventListener("reply-posted", handler);
+  }, []);
+
   const handleDelete = (id: string) => {
     setTweets((prev) => prev.filter((t) => t.id !== id));
   };

@@ -11,9 +11,18 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
 
-const { createTweet, deleteTweet, getTimeline, getUserTweets, getLikedTweets } = await import(
-  "@/app/actions/tweets"
-);
+const {
+  createTweet,
+  createReply,
+  deleteTweet,
+  getTweetById,
+  getTweetReplies,
+  getParentChain,
+  getReplyChains,
+  getTimeline,
+  getUserTweets,
+  getLikedTweets,
+} = await import("@/app/actions/tweets");
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -106,7 +115,8 @@ describe("deleteTweet", () => {
     expect(result.data).toBe(true);
 
     const dbTweet = await prisma.tweet.findUnique({ where: { id: tweet.id } });
-    expect(dbTweet).toBeNull();
+    expect(dbTweet).not.toBeNull();
+    expect(dbTweet!.deletedAt).not.toBeNull();
   });
 
   it("returns an error when deleting another user's tweet", async () => {
@@ -405,5 +415,419 @@ describe("getLikedTweets", () => {
 
     const { data } = await getLikedTweets(alice.id);
     expect(data[0].isLiked).toBe(false);
+  });
+});
+
+// ── createReply ─────────────────────────────────────────────────────────────────
+
+describe("createReply", () => {
+  it("creates a reply and increments parent replyCount", async () => {
+    const user = await createUser("cr1");
+    await mockSession(user.id);
+
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+    const result = await createReply(parent.id, "my reply");
+
+    expect(result.error).toBeNull();
+    expect(result.data?.content).toBe("my reply");
+    expect(result.data?.parentId).toBe(parent.id);
+
+    const updated = await prisma.tweet.findUnique({ where: { id: parent.id } });
+    expect(updated!.replyCount).toBe(1);
+  });
+
+  it("returns error for empty content", async () => {
+    const user = await createUser("cr2");
+    await mockSession(user.id);
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+
+    const result = await createReply(parent.id, "   ");
+    expect(result.error).toBeTruthy();
+    expect(result.data).toBeNull();
+  });
+
+  it("returns error for content over 280 characters", async () => {
+    const user = await createUser("cr3");
+    await mockSession(user.id);
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+
+    const result = await createReply(parent.id, "a".repeat(281));
+    expect(result.error).toBeTruthy();
+    expect(result.data).toBeNull();
+  });
+
+  it("returns error when parent tweet does not exist", async () => {
+    const user = await createUser("cr4");
+    await mockSession(user.id);
+
+    const result = await createReply("nonexistent_id", "reply");
+    expect(result.error).toBeTruthy();
+    expect(result.data).toBeNull();
+  });
+
+  it("redirects to login when not authenticated", async () => {
+    const { redirect } = await import("next/navigation");
+    mockCookieStore.get.mockReturnValue(undefined);
+    await createReply("any", "reply");
+    expect(redirect).toHaveBeenCalledWith(expect.stringContaining("/login"));
+  });
+});
+
+// ── deleteTweet (with parent) ───────────────────────────────────────────────────
+
+describe("deleteTweet (reply)", () => {
+  it("decrements parent replyCount when a leaf reply is deleted", async () => {
+    const user = await createUser("dtr1");
+    await mockSession(user.id);
+
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+    // use the action so replyCount is incremented properly
+    const replyResult = await createReply(parent.id, "my reply");
+    const replyId = replyResult.data!.id;
+
+    const before = await prisma.tweet.findUnique({ where: { id: parent.id } });
+    expect(before!.replyCount).toBe(1);
+
+    await mockSession(user.id);
+    const result = await deleteTweet(replyId);
+    expect(result.error).toBeNull();
+
+    const after = await prisma.tweet.findUnique({ where: { id: parent.id } });
+    expect(after!.replyCount).toBe(0);
+  });
+
+  it("does not decrement parent replyCount when deleted reply has children", async () => {
+    const user = await createUser("dtr2");
+    await mockSession(user.id);
+
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+    const replyResult = await createReply(parent.id, "reply with child");
+    const replyId = replyResult.data!.id;
+
+    await mockSession(user.id);
+    // add a child to the reply so it has children
+    await createReply(replyId, "grandchild");
+
+    await mockSession(user.id);
+    const result = await deleteTweet(replyId);
+    expect(result.error).toBeNull();
+
+    // parent replyCount should stay the same since the reply has children
+    const after = await prisma.tweet.findUnique({ where: { id: parent.id } });
+    expect(after!.replyCount).toBe(1);
+  });
+});
+
+// ── getTweetById ────────────────────────────────────────────────────────────────
+
+describe("getTweetById", () => {
+  it("returns the tweet with author data", async () => {
+    const user = await createUser("gtbi1");
+    await mockSession(user.id);
+    const tweet = await prisma.tweet.create({ data: { content: "hello", authorId: user.id } });
+
+    const result = await getTweetById(tweet.id);
+    expect(result).not.toBeNull();
+    expect(result!.content).toBe("hello");
+    expect(result!.author.id).toBe(user.id);
+    expect(result!.deleted).toBe(false);
+  });
+
+  it("returns null for a non-existent tweet", async () => {
+    const result = await getTweetById("nonexistent_id");
+    expect(result).toBeNull();
+  });
+
+  it("returns a deleted tweet with deleted: true", async () => {
+    const user = await createUser("gtbi2");
+    const tweet = await prisma.tweet.create({
+      data: { content: "gone", authorId: user.id, deletedAt: new Date() },
+    });
+
+    const result = await getTweetById(tweet.id);
+    expect(result).not.toBeNull();
+    expect(result!.deleted).toBe(true);
+  });
+
+  it("marks isLiked true when session user has liked the tweet", async () => {
+    const user = await createUser("gtbi3");
+    await mockSession(user.id);
+    const tweet = await prisma.tweet.create({ data: { content: "hi", authorId: user.id } });
+    await prisma.like.create({ data: { userId: user.id, tweetId: tweet.id } });
+
+    const result = await getTweetById(tweet.id);
+    expect(result!.isLiked).toBe(true);
+  });
+
+  it("isLiked is false when not authenticated", async () => {
+    const user = await createUser("gtbi4");
+    mockCookieStore.get.mockReturnValue(undefined);
+    const tweet = await prisma.tweet.create({ data: { content: "hi", authorId: user.id } });
+
+    const result = await getTweetById(tweet.id);
+    expect(result!.isLiked).toBe(false);
+  });
+});
+
+// ── getTweetReplies ─────────────────────────────────────────────────────────────
+
+describe("getTweetReplies", () => {
+  it("returns direct replies ordered oldest first", async () => {
+    const user = await createUser("gtr1");
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+
+    await prisma.tweet.create({ data: { content: "first reply", authorId: user.id, parentId: parent.id } });
+    await new Promise((r) => setTimeout(r, 5));
+    await prisma.tweet.create({ data: { content: "second reply", authorId: user.id, parentId: parent.id } });
+
+    const { data } = await getTweetReplies(parent.id);
+    expect(data[0].content).toBe("first reply");
+    expect(data[1].content).toBe("second reply");
+  });
+
+  it("excludes deleted replies", async () => {
+    const user = await createUser("gtr2");
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+
+    await prisma.tweet.create({ data: { content: "alive", authorId: user.id, parentId: parent.id } });
+    await prisma.tweet.create({
+      data: { content: "deleted", authorId: user.id, parentId: parent.id, deletedAt: new Date() },
+    });
+
+    const { data } = await getTweetReplies(parent.id);
+    expect(data).toHaveLength(1);
+    expect(data[0].content).toBe("alive");
+  });
+
+  it("returns nextCursor when more replies exist than the limit", async () => {
+    const user = await createUser("gtr3");
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+
+    await prisma.tweet.createMany({
+      data: Array.from({ length: 3 }, (_, i) => ({
+        content: `reply ${i}`,
+        authorId: user.id,
+        parentId: parent.id,
+      })),
+    });
+
+    const { data, nextCursor } = await getTweetReplies(parent.id, { limit: 2 });
+    expect(data).toHaveLength(2);
+    expect(nextCursor).not.toBeNull();
+  });
+
+  it("paginates with cursor", async () => {
+    const user = await createUser("gtr4");
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+
+    for (let i = 0; i < 3; i++) {
+      await prisma.tweet.create({ data: { content: `reply ${i}`, authorId: user.id, parentId: parent.id } });
+      await new Promise((r) => setTimeout(r, 2));
+    }
+
+    const first = await getTweetReplies(parent.id, { limit: 2 });
+    expect(first.data).toHaveLength(2);
+
+    const second = await getTweetReplies(parent.id, { limit: 2, cursor: first.data[1].id });
+    expect(second.data).toHaveLength(1);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  it("isLiked is false when not authenticated", async () => {
+    const user = await createUser("gtr5");
+    const parent = await prisma.tweet.create({ data: { content: "parent", authorId: user.id } });
+    await prisma.tweet.create({ data: { content: "reply", authorId: user.id, parentId: parent.id } });
+    mockCookieStore.get.mockReturnValue(undefined);
+
+    const { data } = await getTweetReplies(parent.id);
+    expect(data[0].isLiked).toBe(false);
+  });
+});
+
+// ── getParentChain ──────────────────────────────────────────────────────────────
+
+describe("getParentChain", () => {
+  it("returns empty array for a root tweet", async () => {
+    const user = await createUser("gpc1");
+    const tweet = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+
+    const chain = await getParentChain(tweet.id);
+    expect(chain).toHaveLength(0);
+  });
+
+  it("returns ancestors oldest-first", async () => {
+    const user = await createUser("gpc2");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    const child = await prisma.tweet.create({ data: { content: "child", authorId: user.id, parentId: root.id } });
+    const grandchild = await prisma.tweet.create({ data: { content: "grandchild", authorId: user.id, parentId: child.id } });
+
+    const chain = await getParentChain(grandchild.id);
+    expect(chain).toHaveLength(2);
+    expect(chain[0].id).toBe(root.id);
+    expect(chain[1].id).toBe(child.id);
+  });
+
+  it("includes deleted ancestors with deleted: true", async () => {
+    const user = await createUser("gpc3");
+    const root = await prisma.tweet.create({
+      data: { content: "deleted root", authorId: user.id, deletedAt: new Date() },
+    });
+    const child = await prisma.tweet.create({ data: { content: "child", authorId: user.id, parentId: root.id } });
+
+    const chain = await getParentChain(child.id);
+    expect(chain).toHaveLength(1);
+    expect(chain[0].deleted).toBe(true);
+  });
+
+  it("returns empty likedSet when all ancestors are deleted (no alive tweets)", async () => {
+    const user = await createUser("gpc4");
+    await mockSession(user.id);
+    const root = await prisma.tweet.create({
+      data: { content: "deleted root", authorId: user.id, deletedAt: new Date() },
+    });
+    const child = await prisma.tweet.create({ data: { content: "child", authorId: user.id, parentId: root.id } });
+
+    const chain = await getParentChain(child.id);
+    // All ancestors are deleted so isLiked should be false (no likedSet query needed)
+    expect(chain[0].isLiked).toBe(false);
+  });
+
+  it("isLiked is false when not authenticated", async () => {
+    const user = await createUser("gpc5");
+    mockCookieStore.get.mockReturnValue(undefined);
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    const child = await prisma.tweet.create({ data: { content: "child", authorId: user.id, parentId: root.id } });
+
+    const chain = await getParentChain(child.id);
+    expect(chain[0].isLiked).toBe(false);
+  });
+});
+
+// ── getReplyChains ──────────────────────────────────────────────────────────────
+
+describe("getReplyChains", () => {
+  it("returns chains for direct replies with no children", async () => {
+    const user = await createUser("grc1");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    await prisma.tweet.create({ data: { content: "reply", authorId: user.id, parentId: root.id } });
+
+    const { data } = await getReplyChains(root.id);
+    expect(data).toHaveLength(1);
+    expect(data[0].tweet.content).toBe("reply");
+    expect(data[0].firstChild).toBeNull();
+    expect(data[0].grandchild).toBeNull();
+  });
+
+  it("includes firstChild when reply has children", async () => {
+    const user = await createUser("grc2");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    const reply = await prisma.tweet.create({
+      data: { content: "reply", authorId: user.id, parentId: root.id, replyCount: 1 },
+    });
+    const child = await prisma.tweet.create({ data: { content: "child", authorId: user.id, parentId: reply.id } });
+
+    const { data } = await getReplyChains(root.id);
+    expect(data[0].firstChild).not.toBeNull();
+    expect(data[0].firstChild!.id).toBe(child.id);
+  });
+
+  it("includes grandchild when firstChild has children", async () => {
+    const user = await createUser("grc3");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    const reply = await prisma.tweet.create({
+      data: { content: "reply", authorId: user.id, parentId: root.id, replyCount: 1 },
+    });
+    const child = await prisma.tweet.create({
+      data: { content: "child", authorId: user.id, parentId: reply.id, replyCount: 1 },
+    });
+    const grandchild = await prisma.tweet.create({
+      data: { content: "grandchild", authorId: user.id, parentId: child.id },
+    });
+
+    const { data } = await getReplyChains(root.id);
+    expect(data[0].grandchild).not.toBeNull();
+    expect(data[0].grandchild!.id).toBe(grandchild.id);
+  });
+
+  it("sets hasMoreSiblings when a reply has more than one child", async () => {
+    const user = await createUser("grc4");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    const reply = await prisma.tweet.create({
+      data: { content: "reply", authorId: user.id, parentId: root.id, replyCount: 2 },
+    });
+    await prisma.tweet.create({ data: { content: "child1", authorId: user.id, parentId: reply.id } });
+    await new Promise((r) => setTimeout(r, 2));
+    await prisma.tweet.create({ data: { content: "child2", authorId: user.id, parentId: reply.id } });
+
+    const { data } = await getReplyChains(root.id);
+    expect(data[0].hasMoreSiblings).toBe(true);
+  });
+
+  it("returns nextCursor when more chains exist than the limit", async () => {
+    const user = await createUser("grc5");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    await prisma.tweet.createMany({
+      data: Array.from({ length: 3 }, (_, i) => ({
+        content: `reply ${i}`,
+        authorId: user.id,
+        parentId: root.id,
+      })),
+    });
+
+    const { data, nextCursor } = await getReplyChains(root.id, { limit: 2 });
+    expect(data).toHaveLength(2);
+    expect(nextCursor).not.toBeNull();
+  });
+
+  it("handles stale replyCount: reply says it has children but none exist", async () => {
+    const user = await createUser("grc6");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    // Manually set replyCount > 0 but create no children
+    await prisma.tweet.create({
+      data: { content: "reply", authorId: user.id, parentId: root.id, replyCount: 1 },
+    });
+
+    const { data } = await getReplyChains(root.id);
+    expect(data[0].firstChild).toBeNull();
+    expect(data[0].hasMoreSiblings).toBe(false);
+  });
+
+  it("sets hasMoreGrandchildren when grandchild itself has replies", async () => {
+    const user = await createUser("grc7");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    const reply = await prisma.tweet.create({
+      data: { content: "reply", authorId: user.id, parentId: root.id, replyCount: 1 },
+    });
+    const child = await prisma.tweet.create({
+      data: { content: "child", authorId: user.id, parentId: reply.id, replyCount: 1 },
+    });
+    // grandchild has its own replies (replyCount > 0) but we only fetch 1
+    await prisma.tweet.create({
+      data: { content: "grandchild", authorId: user.id, parentId: child.id, replyCount: 1 },
+    });
+
+    const { data } = await getReplyChains(root.id);
+    expect(data[0].grandchild).not.toBeNull();
+    expect(data[0].hasMoreGrandchildren).toBe(true);
+  });
+
+  it("grandchild is null when firstChild children are all deleted", async () => {
+    const user = await createUser("grc8");
+    const root = await prisma.tweet.create({ data: { content: "root", authorId: user.id } });
+    const reply = await prisma.tweet.create({
+      data: { content: "reply", authorId: user.id, parentId: root.id, replyCount: 1 },
+    });
+    const child = await prisma.tweet.create({
+      data: { content: "child", authorId: user.id, parentId: reply.id, replyCount: 1 },
+    });
+    // grandchild is soft-deleted — getTweetReplies filters it out
+    await prisma.tweet.create({
+      data: { content: "grandchild", authorId: user.id, parentId: child.id, deletedAt: new Date() },
+    });
+
+    const { data } = await getReplyChains(root.id);
+    expect(data[0].firstChild).not.toBeNull();
+    expect(data[0].grandchild).toBeNull();
+    expect(data[0].hasMoreGrandchildren).toBe(false);
   });
 });

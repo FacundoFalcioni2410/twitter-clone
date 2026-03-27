@@ -49,6 +49,13 @@ const TWEETS: string[][] = [
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+/** Random date between `daysAgo` days ago and now. */
+function randomDate(daysAgo: number): Date {
+  const now = Date.now();
+  const oldest = now - daysAgo * 24 * 60 * 60 * 1000;
+  return new Date(oldest + Math.random() * (now - oldest));
+}
+
 /** Pick `n` distinct random indices from [0, max), excluding `exclude`. */
 function pickRandom(max: number, n: number, exclude: number[] = []): number[] {
   const pool = Array.from({ length: max }, (_, i) => i).filter(
@@ -83,7 +90,7 @@ async function main() {
     const user = await prisma.user.create({ data: { ...USERS[i], passwordHash } });
     const tweets = await prisma.$transaction(
       TWEETS[i].map((content) =>
-        prisma.tweet.create({ data: { content, authorId: user.id }, select: { id: true } })
+        prisma.tweet.create({ data: { content, authorId: user.id, createdAt: randomDate(7) }, select: { id: true } })
       )
     );
     ids.push(user.id);

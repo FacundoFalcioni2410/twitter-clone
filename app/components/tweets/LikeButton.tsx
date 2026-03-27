@@ -22,7 +22,8 @@ export default function LikeButton({ tweetId, initialIsLiked, initialCount }: Li
   const [likers, setLikers] = useState<Liker[]>([]);
   const [loadingLikers, startLikersTransition] = useTransition();
 
-  const handleLike = () => {
+  const handleLike = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     startTransition(async () => {
       if (isLiked) {
         const result = await unlikeTweet(tweetId);

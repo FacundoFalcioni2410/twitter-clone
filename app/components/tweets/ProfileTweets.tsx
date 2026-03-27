@@ -26,9 +26,15 @@ export default function ProfileTweets({
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setTweets(initialTweets);
-    setNextCursor(initialNextCursor);
-  }, [initialTweets, initialNextCursor]);
+    const handler = (e: Event) => {
+      const { parentId } = (e as CustomEvent<{ reply: Tweet; parentId: string }>).detail;
+      setTweets((prev) =>
+        prev.map((t) => (t.id === parentId ? { ...t, replyCount: t.replyCount + 1 } : t))
+      );
+    };
+    window.addEventListener("reply-posted", handler);
+    return () => window.removeEventListener("reply-posted", handler);
+  }, []);
 
   // Prepend tweets posted by this profile's user from anywhere on the page
   useEffect(() => {

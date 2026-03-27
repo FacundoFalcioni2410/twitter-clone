@@ -44,17 +44,23 @@ model Follow {
 }
 
 model Tweet {
-  id        String   @id @default(cuid())
-  content   String   @db.VarChar(280)
-  likeCount Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId  String
-  likes     Like[]
+  id         String    @id @default(cuid())
+  content    String    @db.VarChar(280)
+  likeCount  Int       @default(0)
+  replyCount Int       @default(0)
+  parentId   String?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId   String
+  likes      Like[]
+  parent     Tweet?    @relation("TweetReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies    Tweet[]   @relation("TweetReplies")
 
   @@index([authorId])
   @@index([createdAt(sort: Desc)])
+  @@index([parentId])
 }
 
 model Like {

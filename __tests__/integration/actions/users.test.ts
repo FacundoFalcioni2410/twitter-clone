@@ -1,6 +1,22 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/db";
-import { searchUsers, getSuggestedUsers, getUserByUsername } from "@/app/actions/users";
+import { signToken } from "@/app/lib/auth";
+
+const mockCookieStore = { set: vi.fn(), delete: vi.fn(), get: vi.fn() };
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
+}));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+
+const { updateProfile, searchUsers, getSuggestedUsers, getUserByUsername } = await import(
+  "@/app/actions/users"
+);
+
+async function mockSession(userId: string, username = "testuser") {
+  const token = await signToken({ userId, username });
+  mockCookieStore.get.mockReturnValue({ value: token });
+}
 
 async function createUser(overrides: { username: string; name: string; followersCount?: number }) {
   return prisma.user.create({
@@ -18,7 +34,11 @@ async function cleanup() {
   await prisma.user.deleteMany({ where: { email: { contains: "@usertest.com" } } });
 }
 
-beforeEach(cleanup);
+beforeEach(async () => {
+  await cleanup();
+  mockCookieStore.get.mockReset();
+  vi.clearAllMocks();
+});
 afterAll(cleanup);
 
 describe("getSuggestedUsers", () => {
@@ -115,5 +135,63 @@ describe("searchUsers", () => {
     const results = await searchUsers("popular");
     const usernames = results.map((u) => u.username);
     expect(usernames.indexOf("popular_u")).toBeLessThan(usernames.indexOf("unpopular_u"));
+  });
+});
+
+// ── updateProfile ───────────────────────────────────────────────────────────────
+
+describe("updateProfile", () => {
+  it("updates name and bio for authenticated user", async () => {
+    const user = await createUser({ username: "upd1_u", name: "Old Name" });
+    await mockSession(user.id, user.username);
+
+    const result = await updateProfile({ name: "New Name", bio: "New bio" });
+    expect(result.error).toBeNull();
+
+    const updated = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(updated!.name).toBe("New Name");
+    expect(updated!.bio).toBe("New bio");
+  });
+
+  it("clears bio when not provided", async () => {
+    const user = await createUser({ username: "upd2_u", name: "Name" });
+    await prisma.user.update({ where: { id: user.id }, data: { bio: "old bio" } });
+    await mockSession(user.id, user.username);
+
+    const result = await updateProfile({ name: "Name" });
+    expect(result.error).toBeNull();
+
+    const updated = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(updated!.bio).toBeNull();
+  });
+
+  it("returns error for empty name", async () => {
+    const user = await createUser({ username: "upd3_u", name: "Name" });
+    await mockSession(user.id, user.username);
+
+    const result = await updateProfile({ name: "" });
+    expect(result.error).toBeTruthy();
+    expect(result.data).toBeNull();
+  });
+
+  it("returns error for name over 50 characters", async () => {
+    const user = await createUser({ username: "upd4_u", name: "Name" });
+    await mockSession(user.id, user.username);
+
+    const result = await updateProfile({ name: "a".repeat(51) });
+    expect(result.error).toBeTruthy();
+  });
+
+  it("returns error for bio over 160 characters", async () => {
+    const user = await createUser({ username: "upd5_u", name: "Name" });
+    await mockSession(user.id, user.username);
+
+    const result = await updateProfile({ name: "Name", bio: "b".repeat(161) });
+    expect(result.error).toBeTruthy();
+  });
+
+  it("throws when not authenticated", async () => {
+    mockCookieStore.get.mockReturnValue(undefined);
+    await expect(updateProfile({ name: "Name" })).rejects.toThrow();
   });
 });
