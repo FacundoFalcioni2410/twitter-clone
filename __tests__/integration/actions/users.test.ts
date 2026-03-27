@@ -190,6 +190,28 @@ describe("updateProfile", () => {
     expect(result.error).toBeTruthy();
   });
 
+  it("updates avatarUrl when provided", async () => {
+    const user = await createUser({ username: "upd6_u", name: "Name" });
+    await mockSession(user.id, user.username);
+
+    const result = await updateProfile({ name: "Name", avatarUrl: "/uploads/avatar.jpg" });
+    expect(result.error).toBeNull();
+
+    const updated = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(updated!.avatarUrl).toBe("/uploads/avatar.jpg");
+  });
+
+  it("updates headerUrl when provided", async () => {
+    const user = await createUser({ username: "upd7_u", name: "Name" });
+    await mockSession(user.id, user.username);
+
+    const result = await updateProfile({ name: "Name", headerUrl: "/uploads/header.jpg" });
+    expect(result.error).toBeNull();
+
+    const updated = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(updated!.headerUrl).toBe("/uploads/header.jpg");
+  });
+
   it("throws when not authenticated", async () => {
     mockCookieStore.get.mockReturnValue(undefined);
     await expect(updateProfile({ name: "Name" })).rejects.toThrow();

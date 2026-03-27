@@ -23,6 +23,7 @@ export type TweetAuthor = {
 export type Tweet = {
   id: string;
   content: string;
+  attachmentUrl: string | null;
   likeCount: number;
   replyCount: number;
   parentId: string | null;
@@ -42,12 +43,13 @@ async function getLikedSet(tweetIds: string[], userId: string): Promise<Set<stri
 }
 
 function toTweet(
-  t: { id: string; content: string; likeCount: number; replyCount: number; parentId: string | null; deletedAt: Date | null; createdAt: Date; author: TweetAuthor; updatedAt: Date; authorId: string },
+  t: { id: string; content: string; attachmentUrl: string | null; likeCount: number; replyCount: number; parentId: string | null; deletedAt: Date | null; createdAt: Date; author: TweetAuthor; updatedAt: Date; authorId: string },
   likedSet: Set<string>
 ): Tweet {
   return {
     id: t.id,
     content: t.content,
+    attachmentUrl: t.attachmentUrl,
     likeCount: t.likeCount,
     replyCount: t.replyCount,
     parentId: t.parentId,
@@ -59,16 +61,16 @@ function toTweet(
 }
 
 
-export async function createTweet(content: string) {
+export async function createTweet(content: string, attachmentUrl?: string | null) {
   const session = await requireAuth();
 
-  const result = tweetSchema.safeParse({ content });
+  const result = tweetSchema.safeParse({ content, attachmentUrl });
   if (!result.success) {
     return { data: null, error: result.error.issues[0].message };
   }
 
   const tweet = await prisma.tweet.create({
-    data: { content: result.data.content, authorId: session.userId },
+    data: { content: result.data.content, attachmentUrl: result.data.attachmentUrl ?? null, authorId: session.userId },
     include: { author: { select: authorSelect } },
   });
 
@@ -186,7 +188,7 @@ export async function getParentChain(tweetId: string): Promise<Tweet[]> {
   const start = await prisma.tweet.findUnique({ where: { id: tweetId }, select: { parentId: true } });
   let currentId = start?.parentId ?? null;
 
-  const chain: Array<{ id: string; content: string; likeCount: number; replyCount: number; parentId: string | null; deletedAt: Date | null; createdAt: Date; updatedAt: Date; authorId: string; author: TweetAuthor }> = [];
+  const chain: Array<{ id: string; content: string; attachmentUrl: string | null; likeCount: number; replyCount: number; parentId: string | null; deletedAt: Date | null; createdAt: Date; updatedAt: Date; authorId: string; author: TweetAuthor }> = [];
 
   while (currentId) {
     const tweet = await prisma.tweet.findUnique({

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Avatar from "@/app/components/ui/Avatar";
 import LikeButton from "@/app/components/tweets/LikeButton";
 import { deleteTweet, createReply, type Tweet } from "@/app/actions/tweets";
@@ -125,9 +126,17 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
           )}
         </div>
 
-        <p className="mt-0.5 text-[15px] whitespace-pre-wrap break-words leading-snug">
-          {tweet.content}
-        </p>
+        {tweet.content && (
+          <p className="mt-0.5 text-[15px] whitespace-pre-wrap break-words leading-snug">
+            {tweet.content}
+          </p>
+        )}
+
+        {tweet.attachmentUrl && (
+          <div className="mt-2 rounded-xl overflow-hidden border border-zinc-700" onClick={(e) => e.stopPropagation()}>
+            <Image src={tweet.attachmentUrl} alt="Tweet image" width={0} height={0} sizes="100vw" className="w-full h-auto max-h-[512px] object-contain" />
+          </div>
+        )}
 
         <div className="flex items-center gap-2 mt-2">
           <button
