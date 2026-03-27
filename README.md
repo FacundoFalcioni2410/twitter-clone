@@ -160,9 +160,9 @@ npm run test:e2e:watch
 
 **Tailwind CSS v4** utility classes keep styles colocated with markup and fast to iterate on.
 
-**Vitest** faster than Jest, native TypeScript support. Integration tests run against a real DB to catch issues that mocks hide.
+**Vitest** faster than Jest, native TypeScript support. Integration tests run against a real DB to catch issues that mocks hide. The test suite achieves **100% coverage** across all actions and lib modules.
 
-**Playwright** E2E tests against a real browser and server, covering auth flows and critical paths.
+**Playwright** E2E tests against a real browser and server, covering the critical user flows: **authentication, tweets, likes, and follows**.
 
 The stack was chosen for cohesion, one language (TypeScript) from the database to the UI, one repo, no external services required. The goal was a system that is fast to iterate on, straightforward to onboard into, and where a change in the data model is immediately visible as a type error in the UI.
 
