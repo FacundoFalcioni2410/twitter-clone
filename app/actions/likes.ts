@@ -2,6 +2,7 @@
 
 import { prisma } from "@/app/lib/db";
 import { requireAuth } from "@/app/lib/session";
+import { broadcastLike } from "@/app/lib/sse";
 
 export async function getTweetLikes(tweetId: string) {
   const likes = await prisma.like.findMany({
@@ -21,11 +22,12 @@ export async function likeTweet(tweetId: string) {
 
   if (exists) return { data: null, error: "Already liked" };
 
-  await prisma.$transaction([
+  const [, updated] = await prisma.$transaction([
     prisma.like.create({ data: { userId: session.userId, tweetId } }),
-    prisma.tweet.update({ where: { id: tweetId }, data: { likeCount: { increment: 1 } } }),
+    prisma.tweet.update({ where: { id: tweetId }, data: { likeCount: { increment: 1 } }, select: { likeCount: true } }),
   ]);
 
+  broadcastLike(tweetId, updated.likeCount);
   return { data: true, error: null };
 }
 
@@ -38,10 +40,11 @@ export async function unlikeTweet(tweetId: string) {
 
   if (!exists) return { data: null, error: "Not liked" };
 
-  await prisma.$transaction([
+  const [, updated] = await prisma.$transaction([
     prisma.like.delete({ where: { userId_tweetId: { userId: session.userId, tweetId } } }),
-    prisma.tweet.update({ where: { id: tweetId }, data: { likeCount: { decrement: 1 } } }),
+    prisma.tweet.update({ where: { id: tweetId }, data: { likeCount: { decrement: 1 } }, select: { likeCount: true } }),
   ]);
 
+  broadcastLike(tweetId, updated.likeCount);
   return { data: true, error: null };
 }

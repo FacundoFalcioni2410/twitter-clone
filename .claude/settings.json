@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma:*)",
+      "Bash(find \"c:/Users/Facu/Work/twitter-clone/twitter-clone/app/\\(main\\)\" -name \"page.tsx\")",
+      "Bash(npm run:*)"
+    ]
+  }
+}

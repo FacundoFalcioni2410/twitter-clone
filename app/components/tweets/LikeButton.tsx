@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { likeTweet, unlikeTweet, getTweetLikes } from "@/app/actions/likes";
 import Modal from "@/app/components/ui/Modal";
@@ -17,6 +17,8 @@ interface LikeButtonProps {
 export default function LikeButton({ tweetId, initialIsLiked, initialCount }: LikeButtonProps) {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [count, setCount] = useState(initialCount);
+
+  useEffect(() => { setCount(initialCount); }, [initialCount]);
   const [isPending, startTransition] = useTransition();
   const [showLikers, setShowLikers] = useState(false);
   const [likers, setLikers] = useState<Liker[]>([]);
@@ -27,16 +29,10 @@ export default function LikeButton({ tweetId, initialIsLiked, initialCount }: Li
     startTransition(async () => {
       if (isLiked) {
         const result = await unlikeTweet(tweetId);
-        if (!result.error) {
-          setIsLiked(false);
-          setCount((c) => c - 1);
-        }
+        if (!result.error) setIsLiked(false);
       } else {
         const result = await likeTweet(tweetId);
-        if (!result.error) {
-          setIsLiked(true);
-          setCount((c) => c + 1);
-        }
+        if (!result.error) setIsLiked(true);
       }
     });
   };

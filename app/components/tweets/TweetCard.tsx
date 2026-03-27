@@ -48,7 +48,6 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
   const [deletedLocally, setDeletedLocally] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [replyCount, setReplyCount] = useState(tweet.replyCount);
   const [isReplyPending, startReplyTransition] = useTransition();
 
   const remaining = MAX - replyText.length;
@@ -74,7 +73,6 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
         window.dispatchEvent(
           new CustomEvent("reply-posted", { detail: { reply: result.data, parentId: tweet.id } })
         );
-        setReplyCount((c) => c + 1);
         setReplyText("");
         setIsReplying(false);
       }
@@ -144,7 +142,7 @@ export default function TweetCard({ tweet, currentUserId, onDelete, hasConnector
             <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            {replyCount > 0 && <span className="text-sm tabular-nums">{replyCount}</span>}
+            {tweet.replyCount > 0 && <span className="text-sm tabular-nums">{tweet.replyCount}</span>}
           </button>
           <LikeButton
             tweetId={tweet.id}

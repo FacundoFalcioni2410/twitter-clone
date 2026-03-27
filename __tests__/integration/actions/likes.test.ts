@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/db";
 import { signToken } from "@/app/lib/auth";
 
+const mockBroadcastLike = vi.fn();
+vi.mock("@/app/lib/sse", () => ({ broadcastLike: mockBroadcastLike }));
+
 const mockCookieStore = { set: vi.fn(), delete: vi.fn(), get: vi.fn() };
 vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
@@ -45,6 +48,7 @@ async function cleanup() {
 beforeEach(async () => {
   await cleanup();
   mockCookieStore.get.mockReset();
+  mockBroadcastLike.mockReset();
 });
 
 afterAll(cleanup);
@@ -70,6 +74,18 @@ describe("likeTweet", () => {
 
     const updated = await prisma.tweet.findUnique({ where: { id: tweet.id } });
     expect(updated!.likeCount).toBe(1);
+  });
+
+  it("calls broadcastLike with updated count", async () => {
+    const alice = await createUser("lt1c_a");
+    const bob = await createUser("lt1c_b");
+    const tweet = await createTweet(bob.id);
+    await mockSession(alice.id, alice.username);
+
+    await likeTweet(tweet.id);
+
+    expect(mockBroadcastLike).toHaveBeenCalledOnce();
+    expect(mockBroadcastLike).toHaveBeenCalledWith(tweet.id, 1);
   });
 
   it("returns error when already liked", async () => {
@@ -119,6 +135,20 @@ describe("unlikeTweet", () => {
 
     const updated = await prisma.tweet.findUnique({ where: { id: tweet.id } });
     expect(updated!.likeCount).toBe(0);
+  });
+
+  it("calls broadcastLike with updated count", async () => {
+    const alice = await createUser("ul1c_a");
+    const bob = await createUser("ul1c_b");
+    const tweet = await createTweet(bob.id);
+    await mockSession(alice.id, alice.username);
+
+    await likeTweet(tweet.id);
+    mockBroadcastLike.mockReset();
+    await unlikeTweet(tweet.id);
+
+    expect(mockBroadcastLike).toHaveBeenCalledOnce();
+    expect(mockBroadcastLike).toHaveBeenCalledWith(tweet.id, 0);
   });
 
   it("returns error when not liked", async () => {

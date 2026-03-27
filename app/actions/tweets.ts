@@ -3,6 +3,7 @@
 import { prisma } from "@/app/lib/db";
 import { requireAuth, getCurrentUser } from "@/app/lib/session";
 import { tweetSchema } from "@/app/lib/schemas/tweets";
+import { broadcastTweet, broadcastReplyCount } from "@/app/lib/sse";
 const PAGE_SIZE = 20;
 
 const authorSelect = {
@@ -71,7 +72,9 @@ export async function createTweet(content: string) {
     include: { author: { select: authorSelect } },
   });
 
-  return { data: toTweet(tweet, new Set()), error: null };
+  const data = toTweet(tweet, new Set());
+  broadcastTweet(data); // fire-and-forget — don't await so the action returns immediately
+  return { data, error: null };
 }
 
 export async function createReply(parentId: string, content: string) {
@@ -86,19 +89,22 @@ export async function createReply(parentId: string, content: string) {
   });
   if (!parent) return { data: null, error: "Tweet not found" };
 
-  const tweet = await prisma.$transaction(async (tx) => {
+  const { tweet, replyCount } = await prisma.$transaction(async (tx) => {
     const created = await tx.tweet.create({
       data: { content: result.data.content, authorId: session.userId, parentId },
       include: { author: { select: authorSelect } },
     });
-    await tx.tweet.update({
+    const updated = await tx.tweet.update({
       where: { id: parentId },
       data: { replyCount: { increment: 1 } },
+      select: { replyCount: true },
     });
-    return created;
+    return { tweet: created, replyCount: updated.replyCount };
   });
 
-  return { data: toTweet(tweet, new Set()), error: null };
+  const data = toTweet(tweet, new Set());
+  broadcastReplyCount(parentId, replyCount);
+  return { data, error: null };
 }
 
 export async function deleteTweet(tweetId: string) {

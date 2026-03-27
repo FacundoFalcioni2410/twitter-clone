@@ -37,6 +37,37 @@ export default function Timeline({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // SSE: receive real-time updates from the server
+  useEffect(() => {
+    if (!currentUserId) return;
+    const es = new EventSource("/api/timeline/stream");
+
+    // New tweet from a followed user — deduplicates against tweet-posted
+    es.addEventListener("tweet", (e) => {
+      const tweet = JSON.parse(e.data) as Tweet;
+      handleTweetPosted(tweet);
+    });
+
+    // Like count changed on any tweet currently in the list
+    es.addEventListener("like", (e) => {
+      const { tweetId, likeCount } = JSON.parse(e.data) as { tweetId: string; likeCount: number };
+      setTweets((prev) =>
+        prev.map((t) => (t.id === tweetId ? { ...t, likeCount } : t))
+      );
+    });
+
+    // Reply count changed on any tweet currently in the list
+    es.addEventListener("replyCount", (e) => {
+      const { tweetId, replyCount } = JSON.parse(e.data) as { tweetId: string; replyCount: number };
+      setTweets((prev) =>
+        prev.map((t) => (t.id === tweetId ? { ...t, replyCount } : t))
+      );
+    });
+
+    return () => es.close();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const { parentId } = (e as CustomEvent<{ reply: Tweet; parentId: string }>).detail;
