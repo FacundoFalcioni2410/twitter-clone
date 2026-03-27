@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HomeIcon, SearchIcon, BellIcon } from "@/app/components/ui/icons";
+import { HomeIcon, SearchIcon, BellIcon, ProfileIcon } from "@/app/components/ui/icons";
 import type { NotificationPayload } from "@/app/lib/types";
 
 interface NavLinksProps {
   initialUnreadCount: number;
+  username: string;
 }
 
-export default function NavLinks({ initialUnreadCount }: NavLinksProps) {
+export default function NavLinks({ initialUnreadCount, username }: NavLinksProps) {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const badge = pathname === "/notifications" ? 0 : unreadCount;
@@ -29,6 +30,7 @@ export default function NavLinks({ initialUnreadCount }: NavLinksProps) {
     { href: "/home", label: "Home", Icon: HomeIcon },
     { href: "/search", label: "Search", Icon: SearchIcon },
     { href: "/notifications", label: "Notifications", Icon: BellIcon, badge },
+    { href: `/${username}`, label: "Profile", Icon: ProfileIcon },
   ];
 
   return (

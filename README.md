@@ -2,22 +2,52 @@
 
 A full-stack Twitter/X clone focused on performance, simplicity, and production-ready patterns.
 
-## Prerequisites
-
-| Tool    | Version | Notes                                    |
-| ------- | ------- | ---------------------------------------- |
-| Docker  | **25+** | Required                                 |
-| Node.js | 20.x    | Only needed for local (non-Docker) setup |
-
 ## Quick Start (Docker)
+
+### 1. Install Docker
+
+**Windows / macOS**
+Download and install Docker Desktop: https://www.docker.com/products/docker-desktop
+
+**Linux**
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER   # allows running docker without sudo
+newgrp docker                   # apply group change without logging out
+```
+
+Verify the installation:
+```bash
+docker --version   # should print Docker version 25+
+```
+
+### 2. Clone the repo
+
+```bash
+git clone https://github.com/FacundoFalcioni2410/twitter-clone.git
+cd twitter-clone
+```
+
+### 3. Start the app
 
 ```bash
 docker compose up -d
-docker compose exec app npm run db:migrate:deploy
-docker compose exec app npm run db:seed
+```
+
+The first startup builds the image, runs migrations, and seeds the database automatically. It takes a few minutes.
+
+If you want to force the seed again run:
+```bash
+docker compose exec app npm run db:seed:force
 ```
 
 App available at http://localhost:3000
+
+### Prerequisites (local development only)
+
+| Tool    | Version |
+| ------- | ------- |
+| Node.js | 20.x    |
 
 ## Local Development
 
@@ -34,7 +64,7 @@ cp .env.example .env
 ```
 
 ```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/twitterclone"
+DATABASE_URL="postgresql://postgres:password@localhost:5432/twitter_clone"
 JWT_SECRET="your-super-secret-key-min-32-characters-long!!"
 NODE_ENV="development"
 ```

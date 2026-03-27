@@ -71,6 +71,13 @@ function pickRandom(max: number, n: number, exclude: number[] = []): number[] {
 // ── main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
+  const force = process.argv.includes("--force");
+  const existing = await prisma.user.count();
+  if (existing > 0 && !force) {
+    console.log("⏭  Database already has data, skipping seed. Use --force to override.");
+    return;
+  }
+
   console.log("🌱 Seeding database...\n");
 
   // Full clean

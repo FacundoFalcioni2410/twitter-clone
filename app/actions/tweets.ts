@@ -61,10 +61,10 @@ export async function createTweet(content: string, attachmentUrl?: string | null
   return { data, error: null };
 }
 
-export async function createReply(parentId: string, content: string) {
+export async function createReply(parentId: string, content: string, attachmentUrl?: string | null) {
   const session = await requireAuth();
 
-  const result = tweetSchema.safeParse({ content });
+  const result = tweetSchema.safeParse({ content, attachmentUrl });
   if (!result.success) return { data: null, error: result.error.issues[0].message };
 
   const parent = await prisma.tweet.findUnique({
@@ -75,7 +75,7 @@ export async function createReply(parentId: string, content: string) {
 
   const { tweet, replyCount } = await prisma.$transaction(async (tx) => {
     const created = await tx.tweet.create({
-      data: { content: result.data.content, authorId: session.userId, parentId },
+      data: { content: result.data.content, attachmentUrl: result.data.attachmentUrl ?? null, authorId: session.userId, parentId },
       include: { author: { select: authorSelect } },
     });
     const updated = await tx.tweet.update({

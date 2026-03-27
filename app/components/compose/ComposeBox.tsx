@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Avatar from "@/app/components/ui/Avatar";
 import { createTweet } from "@/app/actions/tweets";
@@ -27,6 +28,7 @@ export default function ComposeBox({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const remaining = MAX - text.length;
   const isOver = remaining < 0;
@@ -59,6 +61,7 @@ export default function ComposeBox({
         setImageUrl(null);
         window.dispatchEvent(new CustomEvent("tweet-posted", { detail: result.data }));
         onTweetPosted?.(result.data);
+        router.refresh();
         onClose?.();
       }
     });

@@ -23,7 +23,7 @@ export default function Sidebar({ user, initialUnreadCount }: { user: SidebarUse
       </Link>
 
       {/* Navigation */}
-      <NavLinks initialUnreadCount={initialUnreadCount} />
+      <NavLinks initialUnreadCount={initialUnreadCount} username={user.username} />
 
       {/* Post button */}
       <div className="mt-4 w-full xl:w-auto">
