@@ -154,6 +154,19 @@ npm run test:e2e:watch
 
 ---
 
+
+## Features
+
+- Post tweets with optional image attachments
+- Threaded replies and nested conversations
+- Infinite scroll timeline with cursor-based pagination
+- Like tweets
+- Follow / unfollow users
+- Customizable profile — avatar and header image
+- Real-time updates via Server-Sent Events (new tweets, likes, reply counts)
+- Real-time notifications with unread badge
+- User search
+
 ## Technical Decisions
 
 ### Stack

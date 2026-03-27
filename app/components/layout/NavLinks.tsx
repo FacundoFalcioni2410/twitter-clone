@@ -16,6 +16,11 @@ export default function NavLinks({ initialUnreadCount, username }: NavLinksProps
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const badge = pathname === "/notifications" ? 0 : unreadCount;
 
+  // Reset badge when the user visits the notifications page
+  useEffect(() => {
+    if (pathname === "/notifications") setUnreadCount(0);
+  }, [pathname]);
+
   // Increment badge on incoming SSE notifications
   useEffect(() => {
     const handler = (e: Event) => {

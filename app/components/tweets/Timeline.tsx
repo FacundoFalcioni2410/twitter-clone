@@ -13,19 +13,36 @@ interface TimelineProps {
   user: { name: string; avatarUrl?: string | null };
 }
 
+// Survives component unmount/remount (navigation away and back).
+// Stores tweets added client-side that may not yet be in the server's RSC payload.
+let clientAddedTweets: Tweet[] = [];
+
 export default function Timeline({
   initialTweets,
   initialNextCursor,
   currentUserId,
   user,
 }: TimelineProps) {
-  const [tweets, setTweets] = useState<Tweet[]>(initialTweets);
+  const [tweets, setTweets] = useState<Tweet[]>(() => {
+    const pending = clientAddedTweets.filter(
+      (t) => !initialTweets.some((s) => s.id === t.id)
+    );
+    return [...pending, ...initialTweets];
+  });
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Once the server includes a tweet in initialTweets, remove it from the client store.
+  useEffect(() => {
+    clientAddedTweets = clientAddedTweets.filter(
+      (t) => !initialTweets.some((s) => s.id === t.id)
+    );
+  }, [initialTweets]);
+
   const handleTweetPosted = (tweet: Tweet) => {
+    clientAddedTweets = [tweet, ...clientAddedTweets.filter((t) => t.id !== tweet.id)];
     setTweets((prev) =>
       prev.some((t) => t.id === tweet.id) ? prev : [tweet, ...prev]
     );
@@ -73,6 +90,7 @@ export default function Timeline({
   }, []);
 
   const handleDelete = (id: string) => {
+    clientAddedTweets = clientAddedTweets.filter((t) => t.id !== id);
     setTweets((prev) => prev.filter((t) => t.id !== id));
   };
 

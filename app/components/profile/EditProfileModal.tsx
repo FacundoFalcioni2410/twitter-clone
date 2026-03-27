@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Image from "next/image";
 import Modal from "@/app/components/ui/Modal";
 import Avatar from "@/app/components/ui/Avatar";
 import { updateProfile } from "@/app/actions/users";
@@ -138,7 +137,8 @@ export default function EditProfileModal({ user, onClose }: EditProfileModalProp
         onClick={() => headerInputRef.current?.click()}
       >
         {headerUrl && (
-          <Image src={headerUrl} alt="Header" fill className="object-cover" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={headerUrl} alt="Header" className="absolute inset-0 w-full h-full object-cover" onError={() => setHeaderUrl(null)} />
         )}
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
           {uploadingHeader ? (

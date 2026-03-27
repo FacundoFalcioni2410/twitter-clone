@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
+import { mkdir } from "fs/promises";
+import { createWriteStream } from "fs";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
 import path from "path";
 import { getCurrentUser } from "@/app/lib/session";
 
@@ -22,10 +25,14 @@ export async function POST(request: Request) {
 
   const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
   const filename = `${session.userId}-${type}-${Date.now()}.${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  const uploadDir = path.join(process.cwd(), "data", "uploads");
 
   await mkdir(uploadDir, { recursive: true });
-  await writeFile(path.join(uploadDir, filename), Buffer.from(await file.arrayBuffer()));
+  const filePath = path.join(uploadDir, filename);
+  await pipeline(
+    Readable.fromWeb(file.stream() as Parameters<typeof Readable.fromWeb>[0]),
+    createWriteStream(filePath)
+  );
 
   return NextResponse.json({ url: `/uploads/${filename}` });
 }

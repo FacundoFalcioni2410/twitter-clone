@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { getCurrentUser } from "@/app/lib/session";
 import { getUserByUsername } from "@/app/actions/users";
 import { getUserTweets, getLikedTweets } from "@/app/actions/tweets";
@@ -79,7 +78,8 @@ export default async function ProfilePage({
 
       <div className="relative h-[130px] sm:h-[200px] bg-zinc-800 overflow-hidden">
         {profile.headerUrl && (
-          <Image src={profile.headerUrl} alt="Header" fill className="object-cover" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={profile.headerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         )}
       </div>
 

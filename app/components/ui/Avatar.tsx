@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 const sizeMap = {
   xs: "w-7 h-7 text-xs",
   sm: "w-9 h-9 text-sm",
@@ -13,12 +17,13 @@ interface AvatarProps {
 }
 
 export default function Avatar({ name, avatarUrl, size = "md" }: AvatarProps) {
+  const [imgError, setImgError] = useState(false);
   const cls = `${sizeMap[size]} rounded-full flex-shrink-0`;
 
-  if (avatarUrl) {
+  if (avatarUrl && !imgError) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={avatarUrl} alt={name} className={`${cls} object-cover`} />
+      <img src={avatarUrl} alt={name} className={`${cls} object-cover`} onError={() => setImgError(true)} />
     );
   }
 
