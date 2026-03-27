@@ -9,6 +9,8 @@ import type { ActionResult } from "@/app/lib/types";
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(50),
   bio: z.string().max(160).optional(),
+  avatarUrl: z.string().optional().nullable(),
+  headerUrl: z.string().optional().nullable(),
 });
 
 export async function updateProfile(
@@ -18,9 +20,15 @@ export async function updateProfile(
   const parsed = updateProfileSchema.safeParse(input);
   if (!parsed.success) return { data: null, error: parsed.error.issues[0].message };
 
+  const { name, bio, avatarUrl, headerUrl } = parsed.data;
   const user = await prisma.user.update({
     where: { id: session.userId },
-    data: { name: parsed.data.name, bio: parsed.data.bio ?? null },
+    data: {
+      name,
+      bio: bio ?? null,
+      ...(avatarUrl !== undefined && { avatarUrl }),
+      ...(headerUrl !== undefined && { headerUrl }),
+    },
     select: { username: true },
   });
 
@@ -70,6 +78,7 @@ export async function getUserByUsername(username: string) {
       name: true,
       bio: true,
       avatarUrl: true,
+      headerUrl: true,
       followersCount: true,
       followingCount: true,
       createdAt: true,

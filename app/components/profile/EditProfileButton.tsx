@@ -4,7 +4,7 @@ import { useState } from "react";
 import EditProfileModal from "@/app/components/profile/EditProfileModal";
 
 interface EditProfileButtonProps {
-  user: { name: string; bio?: string | null; avatarUrl?: string | null };
+  user: { name: string; bio?: string | null; avatarUrl?: string | null; headerUrl?: string | null };
 }
 
 export default function EditProfileButton({ user }: EditProfileButtonProps) {

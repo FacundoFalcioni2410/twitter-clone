@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { getCurrentUser } from "@/app/lib/session";
 import { getUserByUsername } from "@/app/actions/users";
 import { getUserTweets, getLikedTweets } from "@/app/actions/tweets";
@@ -76,9 +77,13 @@ export default async function ProfilePage({
         </div>
       </header>
 
-      <div className="h-[130px] sm:h-[200px] bg-zinc-800" />
+      <div className="relative h-[130px] sm:h-[200px] bg-zinc-800 overflow-hidden">
+        {profile.headerUrl && (
+          <Image src={profile.headerUrl} alt="Header" fill className="object-cover" />
+        )}
+      </div>
 
-      <div className="px-4">
+      <div className="relative px-4">
         <div className="flex items-end justify-between -mt-[46px] sm:-mt-[60px] mb-3">
           <div className="border-4 border-black rounded-full">
             <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size="xl" />
