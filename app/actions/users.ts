@@ -5,13 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/db";
 import { requireAuth } from "@/app/lib/session";
 import type { ActionResult } from "@/app/lib/types";
-
-const updateProfileSchema = z.object({
-  name: z.string().min(1).max(50),
-  bio: z.string().max(160).optional(),
-  avatarUrl: z.string().optional().nullable(),
-  headerUrl: z.string().optional().nullable(),
-});
+import { updateProfileSchema } from "@/app/lib/schemas/users";
 
 export async function updateProfile(
   input: z.infer<typeof updateProfileSchema>

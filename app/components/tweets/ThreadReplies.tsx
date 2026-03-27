@@ -2,7 +2,8 @@
 
 import { useState, useTransition, useEffect } from "react";
 import TweetCard from "@/app/components/tweets/TweetCard";
-import { getReplyChains, type Tweet, type ReplyChain } from "@/app/actions/tweets";
+import { getReplyChains } from "@/app/actions/tweets";
+import type { Tweet, ReplyChain } from "@/app/lib/types";
 
 const BATCH = 3;
 

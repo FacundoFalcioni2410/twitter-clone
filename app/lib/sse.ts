@@ -1,14 +1,4 @@
-import type { Tweet } from "@/app/actions/tweets";
-
-export type NotificationPayload = {
-  id: string;
-  type: "LIKE" | "FOLLOW" | "REPLY";
-  actor: { id: string; username: string; name: string; avatarUrl: string | null };
-  tweetId: string | null;
-  tweetContent: string | null;
-  read: boolean;
-  createdAt: string;
-};
+import type { Tweet, NotificationPayload } from "@/app/lib/types";
 
 type SSEClient = {
   userId: string;

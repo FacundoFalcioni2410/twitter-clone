@@ -5,6 +5,7 @@ import { requireAuth, getCurrentUser } from "@/app/lib/session";
 import { tweetSchema } from "@/app/lib/schemas/tweets";
 import { broadcastTweet, broadcastReplyCount } from "@/app/lib/sse";
 import { createNotification } from "@/app/actions/notifications";
+import type { Tweet, TweetAuthor, ReplyChain } from "@/app/lib/types";
 const PAGE_SIZE = 20;
 
 const authorSelect = {
@@ -13,26 +14,6 @@ const authorSelect = {
   name: true,
   avatarUrl: true,
 } as const;
-
-export type TweetAuthor = {
-  id: string;
-  username: string;
-  name: string;
-  avatarUrl: string | null;
-};
-
-export type Tweet = {
-  id: string;
-  content: string;
-  attachmentUrl: string | null;
-  likeCount: number;
-  replyCount: number;
-  parentId: string | null;
-  isLiked: boolean;
-  deleted: boolean;
-  createdAt: string;
-  author: TweetAuthor;
-};
 
 async function getLikedSet(tweetIds: string[], userId: string): Promise<Set<string>> {
   if (tweetIds.length === 0) return new Set();
@@ -254,14 +235,6 @@ export async function getLikedTweets(userId: string, opts?: { cursor?: string })
 
   return { data, nextCursor };
 }
-
-export type ReplyChain = {
-  tweet: Tweet;
-  firstChild: Tweet | null;
-  hasMoreSiblings: boolean;
-  grandchild: Tweet | null;
-  hasMoreGrandchildren: boolean;
-};
 
 export async function getReplyChains(
   tweetId: string,

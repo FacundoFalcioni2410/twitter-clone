@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import Avatar from "@/app/components/ui/Avatar";
 import LikeButton from "@/app/components/tweets/LikeButton";
-import { createReply, type Tweet } from "@/app/actions/tweets";
+import { createReply } from "@/app/actions/tweets";
+import type { Tweet } from "@/app/lib/types";
 
 const MAX = 280;
 

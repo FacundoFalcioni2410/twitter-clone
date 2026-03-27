@@ -4,21 +4,16 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HomeIcon, SearchIcon, BellIcon } from "@/app/components/ui/icons";
-import type { NotificationPayload } from "@/app/lib/sse";
+import type { NotificationPayload } from "@/app/lib/types";
 
 interface NavLinksProps {
-  username: string;
   initialUnreadCount: number;
 }
 
-export default function NavLinks({ username, initialUnreadCount }: NavLinksProps) {
+export default function NavLinks({ initialUnreadCount }: NavLinksProps) {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-
-  // Clear badge when visiting the notifications page
-  useEffect(() => {
-    if (pathname === "/notifications") setUnreadCount(0);
-  }, [pathname]);
+  const badge = pathname === "/notifications" ? 0 : unreadCount;
 
   // Increment badge on incoming SSE notifications
   useEffect(() => {
@@ -33,7 +28,7 @@ export default function NavLinks({ username, initialUnreadCount }: NavLinksProps
   const links = [
     { href: "/home", label: "Home", Icon: HomeIcon },
     { href: "/search", label: "Search", Icon: SearchIcon },
-    { href: "/notifications", label: "Notifications", Icon: BellIcon, badge: unreadCount },
+    { href: "/notifications", label: "Notifications", Icon: BellIcon, badge },
   ];
 
   return (

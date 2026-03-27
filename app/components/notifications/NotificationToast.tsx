@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/app/components/ui/Avatar";
-import type { NotificationPayload } from "@/app/lib/sse";
+import type { NotificationPayload } from "@/app/lib/types";
 
 const TOAST_DURATION = 4500;
 

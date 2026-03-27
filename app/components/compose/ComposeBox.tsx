@@ -3,7 +3,8 @@
 import { useState, useTransition, useRef } from "react";
 import Image from "next/image";
 import Avatar from "@/app/components/ui/Avatar";
-import { createTweet, type Tweet } from "@/app/actions/tweets";
+import { createTweet } from "@/app/actions/tweets";
+import type { Tweet } from "@/app/lib/types";
 
 const MAX = 280;
 

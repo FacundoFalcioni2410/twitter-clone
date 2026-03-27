@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ComposeBox from "@/app/components/compose/ComposeBox";
 import TweetCard from "@/app/components/tweets/TweetCard";
-import { getTimeline, type Tweet } from "@/app/actions/tweets";
+import { getTimeline } from "@/app/actions/tweets";
+import type { Tweet } from "@/app/lib/types";
 
 interface TimelineProps {
   initialTweets: Tweet[];

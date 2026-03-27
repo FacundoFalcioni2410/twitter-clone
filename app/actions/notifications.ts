@@ -2,7 +2,8 @@
 
 import { prisma } from "@/app/lib/db";
 import { requireAuth, getCurrentUser } from "@/app/lib/session";
-import { broadcastNotification, type NotificationPayload } from "@/app/lib/sse";
+import { broadcastNotification } from "@/app/lib/sse";
+import type { NotificationPayload } from "@/app/lib/types";
 
 const PAGE_SIZE = 20;
 

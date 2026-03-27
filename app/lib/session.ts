@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifyToken, type JWTPayload } from "@/app/lib/auth";
+import { verifyToken } from "@/app/lib/auth";
+import type { JWTPayload } from "@/app/lib/types";
 
 const COOKIE_NAME = "session";
 

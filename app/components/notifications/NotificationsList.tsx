@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Avatar from "@/app/components/ui/Avatar";
 import { formatTime } from "@/app/lib/utils";
-import type { NotificationPayload } from "@/app/lib/sse";
+import type { NotificationPayload } from "@/app/lib/types";
 import { getNotifications } from "@/app/actions/notifications";
 
 function NotificationItem({ notif }: { notif: NotificationPayload }) {

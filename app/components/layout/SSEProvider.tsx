@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type { NotificationPayload } from "@/app/lib/sse";
-import type { Tweet } from "@/app/actions/tweets";
+import type { NotificationPayload, Tweet } from "@/app/lib/types";
 
 // Dispatches window events for every SSE message so any component can listen
 // regardless of which page is currently rendered.

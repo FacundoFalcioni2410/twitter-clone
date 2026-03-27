@@ -1,14 +1,10 @@
 import { SignJWT, jwtVerify } from "jose";
+import type { JWTPayload } from "@/app/lib/types";
 
 const secret = new TextEncoder().encode(
   /* v8 ignore next */
   process.env.JWT_SECRET ?? "fallback-secret-not-for-production"
 );
-
-export type JWTPayload = {
-  userId: string;
-  username: string;
-};
 
 export async function signToken(payload: JWTPayload): Promise<string> {
   return new SignJWT({ ...payload })

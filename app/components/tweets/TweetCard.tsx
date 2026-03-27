@@ -6,7 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import Avatar from "@/app/components/ui/Avatar";
 import LikeButton from "@/app/components/tweets/LikeButton";
-import { deleteTweet, createReply, type Tweet } from "@/app/actions/tweets";
+import { deleteTweet, createReply } from "@/app/actions/tweets";
+import type { Tweet } from "@/app/lib/types";
 import { formatTime } from "@/app/lib/utils";
 
 const MAX = 280;

@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import TweetCard from "@/app/components/tweets/TweetCard";
-import { getUserTweets, type Tweet } from "@/app/actions/tweets";
+import { getUserTweets } from "@/app/actions/tweets";
+import type { Tweet } from "@/app/lib/types";
 
 interface ProfileTweetsProps {
   initialTweets: Tweet[];
