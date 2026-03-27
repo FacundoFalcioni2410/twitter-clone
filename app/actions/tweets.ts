@@ -4,6 +4,7 @@ import { prisma } from "@/app/lib/db";
 import { requireAuth, getCurrentUser } from "@/app/lib/session";
 import { tweetSchema } from "@/app/lib/schemas/tweets";
 import { broadcastTweet, broadcastReplyCount } from "@/app/lib/sse";
+import { createNotification } from "@/app/actions/notifications";
 const PAGE_SIZE = 20;
 
 const authorSelect = {
@@ -87,7 +88,7 @@ export async function createReply(parentId: string, content: string) {
 
   const parent = await prisma.tweet.findUnique({
     where: { id: parentId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, authorId: true },
   });
   if (!parent) return { data: null, error: "Tweet not found" };
 
@@ -106,6 +107,7 @@ export async function createReply(parentId: string, content: string) {
 
   const data = toTweet(tweet, new Set());
   broadcastReplyCount(parentId, replyCount);
+  void createNotification({ type: "REPLY", recipientId: parent.authorId, actorId: session.userId, tweetId: parentId, tweetContent: result.data.content });
   return { data, error: null };
 }
 

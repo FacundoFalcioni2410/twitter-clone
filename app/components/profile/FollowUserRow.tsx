@@ -40,7 +40,7 @@ export default function FollowUserRow({ user, currentUserId }: FollowUserRowProp
             </div>
           </Link>
           {user.id !== currentUserId && (
-            <FollowButton targetUserId={user.id} initialIsFollowing={user.isFollowing} />
+            <FollowButton targetUserId={user.id} initialIsFollowing={user.isFollowing} isFollowingViewer={user.isFollowingViewer} />
           )}
         </div>
         {user.bio && (

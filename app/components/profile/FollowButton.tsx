@@ -6,12 +6,14 @@ import { followUser, unfollowUser } from "@/app/actions/follows";
 interface FollowButtonProps {
   targetUserId: string;
   initialIsFollowing: boolean;
+  isFollowingViewer?: boolean;
   className?: string;
 }
 
 export default function FollowButton({
   targetUserId,
   initialIsFollowing,
+  isFollowingViewer = false,
   className = "",
 }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
@@ -52,7 +54,7 @@ export default function FollowButton({
           : "bg-white text-black hover:bg-zinc-200"
       } ${className}`}
     >
-      {isFollowing ? (hovering ? "Unfollow" : "Following") : "Follow"}
+      {isFollowing ? (hovering ? "Unfollow" : "Following") : isFollowingViewer ? "Follow back" : "Follow"}
     </button>
   );
 }

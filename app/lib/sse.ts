@@ -1,5 +1,15 @@
 import type { Tweet } from "@/app/actions/tweets";
 
+export type NotificationPayload = {
+  id: string;
+  type: "LIKE" | "FOLLOW" | "REPLY";
+  actor: { id: string; username: string; name: string; avatarUrl: string | null };
+  tweetId: string | null;
+  tweetContent: string | null;
+  read: boolean;
+  createdAt: string;
+};
+
 type SSEClient = {
   userId: string;
   enqueue: (chunk: string) => void;
@@ -70,4 +80,21 @@ export function broadcastLike(tweetId: string, likeCount: number): void {
 export function broadcastReplyCount(tweetId: string, replyCount: number): void {
   if (clients.size === 0) return;
   broadcast(`event: replyCount\ndata: ${JSON.stringify({ tweetId, replyCount })}\n\n`);
+}
+
+/**
+ * Push a notification to a specific connected user.
+ */
+export function broadcastNotification(recipientId: string, notification: NotificationPayload): void {
+  if (clients.size === 0) return;
+  const payload = `event: notification\ndata: ${JSON.stringify(notification)}\n\n`;
+  for (const client of clients) {
+    if (client.userId === recipientId) {
+      try {
+        client.enqueue(payload);
+      } catch {
+        clients.delete(client);
+      }
+    }
+  }
 }

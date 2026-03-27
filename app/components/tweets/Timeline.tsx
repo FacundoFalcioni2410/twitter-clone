@@ -37,36 +37,28 @@ export default function Timeline({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // SSE: receive real-time updates from the server
+  // SSE: receive real-time updates dispatched by SSEProvider in the layout
   useEffect(() => {
-    if (!currentUserId) return;
-    const es = new EventSource("/api/timeline/stream");
+    const onTweet = (e: Event) => handleTweetPosted((e as CustomEvent<Tweet>).detail);
+    const onLike = (e: Event) => {
+      const { tweetId, likeCount } = (e as CustomEvent<{ tweetId: string; likeCount: number }>).detail;
+      setTweets((prev) => prev.map((t) => (t.id === tweetId ? { ...t, likeCount } : t)));
+    };
+    const onReplyCount = (e: Event) => {
+      const { tweetId, replyCount } = (e as CustomEvent<{ tweetId: string; replyCount: number }>).detail;
+      setTweets((prev) => prev.map((t) => (t.id === tweetId ? { ...t, replyCount } : t)));
+    };
 
-    // New tweet from a followed user — deduplicates against tweet-posted
-    es.addEventListener("tweet", (e) => {
-      const tweet = JSON.parse(e.data) as Tweet;
-      handleTweetPosted(tweet);
-    });
-
-    // Like count changed on any tweet currently in the list
-    es.addEventListener("like", (e) => {
-      const { tweetId, likeCount } = JSON.parse(e.data) as { tweetId: string; likeCount: number };
-      setTweets((prev) =>
-        prev.map((t) => (t.id === tweetId ? { ...t, likeCount } : t))
-      );
-    });
-
-    // Reply count changed on any tweet currently in the list
-    es.addEventListener("replyCount", (e) => {
-      const { tweetId, replyCount } = JSON.parse(e.data) as { tweetId: string; replyCount: number };
-      setTweets((prev) =>
-        prev.map((t) => (t.id === tweetId ? { ...t, replyCount } : t))
-      );
-    });
-
-    return () => es.close();
+    window.addEventListener("sse:tweet", onTweet);
+    window.addEventListener("sse:like", onLike);
+    window.addEventListener("sse:replyCount", onReplyCount);
+    return () => {
+      window.removeEventListener("sse:tweet", onTweet);
+      window.removeEventListener("sse:like", onLike);
+      window.removeEventListener("sse:replyCount", onReplyCount);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId]);
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => {

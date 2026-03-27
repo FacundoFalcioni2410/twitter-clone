@@ -95,6 +95,7 @@ export default async function ProfilePage({
               <FollowButton
                 targetUserId={profile.id}
                 initialIsFollowing={isFollowing}
+                isFollowingViewer={isFollowingViewer}
                 className="mt-[52px] sm:mt-[68px]"
               />
             )}

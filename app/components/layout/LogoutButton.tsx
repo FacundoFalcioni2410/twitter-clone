@@ -33,7 +33,7 @@ export default function LogoutButton({ compact = false }: { compact?: boolean })
       className="flex items-center gap-4 rounded-full p-3 w-full transition-colors hover:bg-white/10 disabled:opacity-50"
     >
       <LogoutIcon />
-      <span className="hidden xl:inline text-xl">Log out</span>
+      <span className="text-xl">Log out</span>
     </button>
   );
 }
